@@ -85,7 +85,7 @@ const Login = () => {
       <LoginPaper elevation={10}>
         <Box sx={{ width: '100%', maxWidth: 400, p: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
-            <Logo src="/logo.png" alt="Decimetrix Logo" />
+            <Logo src="././favicon.ico" alt="Decimetrix Logo" />
           </Box>
           
           <Typography variant="h4" component="h1" align="center" gutterBottom>
