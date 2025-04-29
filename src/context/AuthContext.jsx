@@ -11,6 +11,10 @@ export const AuthProvider = ({ children }) => {
   // Move loadUser to useCallback to avoid dependency issues
   const loadUser = useCallback(async () => {
     try {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       // Decode JWT to get user info
       const decoded = JSON.parse(atob(token.split(".")[1]));
       setUser(decoded.user);
@@ -38,8 +42,8 @@ export const AuthProvider = ({ children }) => {
   // Login user
   const login = async (email, password) => {
     try {
-      // For development/testing purposes, allow a hardcoded login
-      if (email === "admin@decimetrix.com" && password === "admin123") {
+      // Para desarrollo/pruebas, permitir login con credenciales hardcodeadas
+      if (email === "admin@decimetrix.com" && password === "Admin123") {
         // Create a mock token with admin role
         const mockToken =
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6ImFkbWluIn0sImlhdCI6MTYxNjc2MjcwMCwiZXhwIjoxNjE2ODQ5MTAwfQ.mock-signature";
@@ -56,7 +60,7 @@ export const AuthProvider = ({ children }) => {
         return true;
       }
 
-      // If no hardcoded credentials match, return false
+      // Si no coinciden las credenciales hardcodeadas, devolver false
       return false;
     } catch (err) {
       console.error("Login error:", err.response?.data?.msg || err.message);
