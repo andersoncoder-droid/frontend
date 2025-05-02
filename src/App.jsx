@@ -1,3 +1,6 @@
+// App.jsx
+// Minimal App component for alternate routing. Used for testing or alternate entry.
+
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
@@ -35,5 +38,7 @@ function App() {
     </AuthProvider>
   );
 }
+
+// Main route setup with AuthProvider and SocketProvider.
 
 export default App;

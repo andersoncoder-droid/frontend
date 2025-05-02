@@ -1,3 +1,6 @@
+// index.js
+// React application entry point. Renders the root component and sets up theme.
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
@@ -12,6 +15,7 @@ root.render(
   </React.StrictMode>
 );
 
+// Create and export a custom MUI theme for the app.
 const theme = createTheme({
   palette: {
     primary: {

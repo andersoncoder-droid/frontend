@@ -1,4 +1,8 @@
-import React, { useState, useContext } from 'react';
+// AddAssetForm.jsx
+// Form component for adding a new asset. Handles validation and submission.
+// Notifies parent on successful add.
+
+import React, { useState, useContext } from "react";
 import {
   Paper,
   Typography,
@@ -9,75 +13,86 @@ import {
   IconButton,
   InputAdornment,
   CircularProgress,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import { AssetsContext } from '../context/AssetsContext';
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import { AssetsContext } from "../context/AssetsContext";
 
 const assetTypes = [
-  { value: 'well', label: 'Pozo' },
-  { value: 'motor', label: 'Motor' },
-  { value: 'transformer', label: 'Transformador' },
+  { value: "well", label: "Pozo" },
+  { value: "motor", label: "Motor" },
+  { value: "transformer", label: "Transformador" },
 ];
 
 const AddAssetForm = ({ onAssetAdded }) => {
   const { addAsset } = useContext(AssetsContext);
   const { user } = useContext(AuthContext);
   const [formData, setFormData] = useState({
-    name: '',
-    type: 'well',
-    latitude: '',
-    longitude: '',
-    comments: '',
+    name: "",
+    type: "well",
+    latitude: "",
+    longitude: "",
+    comments: "",
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // handleChange: Updates form state and clears errors.
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value,
     });
-    
+
     // Limpiar error cuando el usuario escribe
     if (errors[name]) {
       setErrors({
         ...errors,
-        [name]: '',
+        [name]: "",
       });
     }
   };
 
+  // validateForm: Checks required fields and value ranges.
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es obligatorio';
+      newErrors.name = "El nombre es obligatorio";
     }
-    
+
     if (!formData.latitude) {
-      newErrors.latitude = 'La latitud es obligatoria';
-    } else if (isNaN(formData.latitude) || formData.latitude < -90 || formData.latitude > 90) {
-      newErrors.latitude = 'La latitud debe ser un número entre -90 y 90';
+      newErrors.latitude = "La latitud es obligatoria";
+    } else if (
+      isNaN(formData.latitude) ||
+      formData.latitude < -90 ||
+      formData.latitude > 90
+    ) {
+      newErrors.latitude = "La latitud debe ser un número entre -90 y 90";
     }
-    
+
     if (!formData.longitude) {
-      newErrors.longitude = 'La longitud es obligatoria';
-    } else if (isNaN(formData.longitude) || formData.longitude < -180 || formData.longitude > 180) {
-      newErrors.longitude = 'La longitud debe ser un número entre -180 y 180';
+      newErrors.longitude = "La longitud es obligatoria";
+    } else if (
+      isNaN(formData.longitude) ||
+      formData.longitude < -180 ||
+      formData.longitude > 180
+    ) {
+      newErrors.longitude = "La longitud debe ser un número entre -180 y 180";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // handleSubmit: Validates and submits the form, calls addAsset from context.
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
       try {
         setIsSubmitting(true);
-        
+
         // Convertir coordenadas a números
         const newAsset = {
           ...formData,
@@ -85,27 +100,27 @@ const AddAssetForm = ({ onAssetAdded }) => {
           longitude: parseFloat(formData.longitude),
           // La fecha de creación y el creador se añaden en el contexto
         };
-        
+
         // Añadir el activo a través del contexto
         const savedAsset = await addAsset(newAsset);
-        
+
         // Notificar al componente padre
         if (onAssetAdded) {
           onAssetAdded(savedAsset);
         }
-        
+
         // Limpiar el formulario
         setFormData({
-          name: '',
-          type: 'well',
-          latitude: '',
-          longitude: '',
-          comments: '',
+          name: "",
+          type: "well",
+          latitude: "",
+          longitude: "",
+          comments: "",
         });
-        
-        console.log('Activo añadido:', savedAsset);
+
+        console.log("Activo añadido:", savedAsset);
       } catch (err) {
-        console.error('Error al guardar el activo:', err);
+        console.error("Error al guardar el activo:", err);
       } finally {
         setIsSubmitting(false);
       }
@@ -113,18 +128,18 @@ const AddAssetForm = ({ onAssetAdded }) => {
   };
 
   return (
-    <Paper sx={{ p: 3, position: 'relative' }}>
+    <Paper sx={{ p: 3, position: "relative" }}>
       <IconButton
-        sx={{ position: 'absolute', top: 8, right: 8 }}
+        sx={{ position: "absolute", top: 8, right: 8 }}
         onClick={() => onAssetAdded()}
       >
         <CloseIcon />
       </IconButton>
-      
+
       <Typography variant="h6" gutterBottom>
         Añadir Nuevo Activo
       </Typography>
-      
+
       <Box component="form" onSubmit={handleSubmit} noValidate>
         <TextField
           margin="normal"
@@ -139,7 +154,7 @@ const AddAssetForm = ({ onAssetAdded }) => {
           helperText={errors.name}
           disabled={isSubmitting}
         />
-        
+
         <TextField
           margin="normal"
           required
@@ -158,7 +173,7 @@ const AddAssetForm = ({ onAssetAdded }) => {
             </MenuItem>
           ))}
         </TextField>
-        
+
         <TextField
           margin="normal"
           required
@@ -175,7 +190,7 @@ const AddAssetForm = ({ onAssetAdded }) => {
           }}
           disabled={isSubmitting}
         />
-        
+
         <TextField
           margin="normal"
           required
@@ -192,7 +207,7 @@ const AddAssetForm = ({ onAssetAdded }) => {
           }}
           disabled={isSubmitting}
         />
-        
+
         <TextField
           margin="normal"
           fullWidth
@@ -205,7 +220,7 @@ const AddAssetForm = ({ onAssetAdded }) => {
           rows={3}
           disabled={isSubmitting}
         />
-        
+
         <Button
           type="submit"
           fullWidth
@@ -216,7 +231,7 @@ const AddAssetForm = ({ onAssetAdded }) => {
           {isSubmitting ? (
             <CircularProgress size={24} color="inherit" />
           ) : (
-            'Añadir Activo'
+            "Añadir Activo"
           )}
         </Button>
       </Box>

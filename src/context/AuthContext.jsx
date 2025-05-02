@@ -1,3 +1,7 @@
+// AuthContext.jsx
+// Provides authentication context and logic (login, logout, register, user state).
+// Decodes JWT and stores user info in context.
+
 import React, { createContext, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
@@ -38,6 +42,11 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, [token, loadUser]);
+
+  // loadUser: Decodes JWT and sets user state.
+  // login: Mock login for development, sets a fake JWT.
+  // register: Stub for user registration (not implemented).
+  // logout: Clears token and user state.
 
   // Login user
   const login = async (email, password) => {

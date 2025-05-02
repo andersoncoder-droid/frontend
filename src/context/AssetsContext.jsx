@@ -1,3 +1,7 @@
+// AssetsContext.jsx
+// Provides asset management context (CRUD, permissions, notifications).
+// Uses mock data for development. Handles add, update, delete, and fetch.
+
 import React, {
   createContext,
   useState,
@@ -98,11 +102,11 @@ export const AssetsProvider = ({ children }) => {
       // Crear un nuevo activo con ID generado y fecha de creación
       const newId =
         assets.length > 0 ? Math.max(...assets.map((a) => a.id)) + 1 : 1;
-      const createdAsset = { 
-        ...newAsset, 
+      const createdAsset = {
+        ...newAsset,
         id: newId,
         createdAt: new Date().toISOString(),
-        createdBy: user ? user.username : 'unknown'
+        createdBy: user ? user.username : "unknown",
       };
 
       // Actualizar el estado local sin provocar una recarga completa
@@ -205,3 +209,9 @@ export const AssetsProvider = ({ children }) => {
     </AssetsContext.Provider>
   );
 };
+
+// fetchAssets: Loads assets (mocked for now).
+// addAsset: Adds a new asset to state and notifies.
+// updateAsset: Updates an asset in state and notifies.
+// deleteAsset: Removes asset from state and notifies.
+// canEditAssets: Checks if user can edit/delete assets.

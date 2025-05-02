@@ -1,36 +1,43 @@
-import React, { createContext, useState, useEffect } from 'react';
-import { Snackbar, Alert } from '@mui/material';
+// NotificationContext.jsx
+// Provides notification context for global toasts and notification list.
+
+import React, { createContext, useState, useEffect } from "react";
+import { Snackbar, Alert } from "@mui/material";
 
 export const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'info' });
+  const [toast, setToast] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
-  // Función para añadir una notificación
-  const addNotification = (message, severity = 'info', showToast = true) => {
+  // addNotification: Adds a notification and optionally shows a toast.
+  const addNotification = (message, severity = "info", showToast = true) => {
     const newNotification = {
       id: Date.now(),
       message,
       time: new Date(),
-      severity
+      severity,
     };
-    
-    setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
-    
+
+    setNotifications((prev) => [newNotification, ...prev.slice(0, 9)]);
+
     // Si showToast es true, mostrar también como toast
     if (showToast) {
       setToast({
         open: true,
         message,
-        severity
+        severity,
       });
     }
   };
 
-  // Función para cerrar el toast
+  // handleCloseToast: Closes the toast notification.
   const handleCloseToast = (event, reason) => {
-    if (reason === 'clickaway') {
+    if (reason === "clickaway") {
       return;
     }
     setToast({ ...toast, open: false });
@@ -39,16 +46,16 @@ export const NotificationProvider = ({ children }) => {
   return (
     <NotificationContext.Provider value={{ notifications, addNotification }}>
       {children}
-      <Snackbar 
-        open={toast.open} 
-        autoHideDuration={4000} 
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
         onClose={handleCloseToast}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <Alert 
-          onClose={handleCloseToast} 
-          severity={toast.severity} 
-          sx={{ width: '100%' }}
+        <Alert
+          onClose={handleCloseToast}
+          severity={toast.severity}
+          sx={{ width: "100%" }}
         >
           {toast.message}
         </Alert>
