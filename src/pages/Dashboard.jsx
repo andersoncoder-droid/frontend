@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
-  Grid, 
-  Card, 
-  CardContent, 
+import React, { useEffect, useRef, useState, useContext } from "react";
+import {
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  Card,
+  CardContent,
   CardHeader,
   Divider,
   List,
@@ -13,331 +13,273 @@ import {
   ListItemText,
   ListItemIcon,
   Avatar,
-  Chip
-} from '@mui/material';
+  Chip,
+} from "@mui/material";
 import {
   LocationOn,
   Notifications as NotificationsIcon,
-  Speed as SpeedIcon,
-  ElectricBolt as ElectricIcon,
-  Water as WaterIcon
-} from '@mui/icons-material';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import axios from 'axios';
-import { io } from 'socket.io-client';
-import useSWR from 'swr';
-import { AuthContext } from '../context/AuthContext';
-import { AssetsContext } from '../context/AssetsContext';
-import { ThemeContext } from '../context/ThemeContext';
-import MainLayout from '../components/layout/MainLayout';
- 
-mapboxgl.accessToken = 'pk.eyJ1IjoiYW5kZXJzb25sb3NhZGEiLCJhIjoiY203eTNlNXdoMDVvMTJqb2thanV1YTU3NSJ9.mR2ivDi1z73GMHc-sIZpHQ';
+} from "@mui/icons-material";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import axios from "axios";
+import useSWR from "swr";
+import { AuthContext } from "../context/AuthContext";
+import { AssetsContext } from "../context/AssetsContext";
+import { ThemeContext } from "../context/ThemeContext";
+import { SocketContext } from "../context/SocketContext";
+import { NotificationContext } from "../context/NotificationContext";
+import MainLayout from "../components/layout/MainLayout";
+import RecentNotifications from "../components/RecentNotifications";
+import DashboardMap from "../components/DashboardMap";
+import { getAssetIcon, getAssetColor } from "../utils/assetIcons";
 
-const fetcher = (url) => axios.get(url, {
-  headers: {
-    'x-auth-token': localStorage.getItem('token')
-  }
-}).then((res) => res.data);
+mapboxgl.accessToken =
+  "pk.eyJ1IjoiYW5kZXJzb25sb3NhZGEiLCJhIjoiY203eTNlNXdoMDVvMTJqb2thanV1YTU3NSJ9.mR2ivDi1z73GMHc-sIZpHQ";
+
+const fetcher = (url) =>
+  axios
+    .get(url, {
+      headers: {
+        "x-auth-token": localStorage.getItem("token"),
+      },
+    })
+    .then((res) => res.data);
 
 const AssetTypeIcon = ({ type }) => {
-  switch (type) {
-    case 'well':
-      return <WaterIcon color="primary" />;
-    case 'motor':
-      return <SpeedIcon color="secondary" />;
-    case 'transformer':
-      return <ElectricIcon style={{ color: '#ff9800' }} />;
-    default:
-      return <LocationOn color="primary" />;
-  }
+  return (
+    <Avatar sx={{ bgcolor: getAssetColor(type), width: 40, height: 40 }}>
+      <img 
+        src={getAssetIcon(type)} 
+        alt={`${type} icon`} 
+        style={{ 
+          width: '24px', 
+          height: '24px' 
+        }} 
+      />
+    </Avatar>
+  );
 };
 
-// Update the map initialization to use the ThemeContext
-const Dashboard = () => {
-  const { assets, loading, error } = useContext(AssetsContext);
-  const { themeMode } = useContext(ThemeContext); // Add this line
-  
-  const mapContainer = useRef(null);
-  const map = useRef(null);
-  const [lng, setLng] = useState(-70.9);
-  const [lat, setLat] = useState(42.35);
-  const [zoom, setZoom] = useState(9);
-  const [notifications, setNotifications] = useState([]);
+function Dashboard() {
+  const { assets, loading, error, refreshAssets } = useContext(AssetsContext);
+  const { darkMode } = useContext(ThemeContext);
   const { user } = useContext(AuthContext);
-  
-  // Instead, use a different name or just use mutate
-  const { data, mutate } = useSWR(
-    'http://localhost:5000/api/assets',
-    fetcher
-  );
+  const socket = useContext(SocketContext);
+  const { addNotification } = useContext(NotificationContext);
 
-  // Initialize map
+  // Añadir este efecto para refrescar los activos cuando se monta el componente
   useEffect(() => {
-    if (map.current) return; // Initialize map only once
-    
-    // Choose map style based on theme mode
-    const mapStyle = themeMode === 'dark' 
-      ? "mapbox://styles/mapbox/dark-v10" 
-      : "mapbox://styles/mapbox/streets-v11";
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: mapStyle,
-      center: [lng, lat],
-      zoom: zoom
-    });
+    console.log('Dashboard - Refrescando activos');
+    refreshAssets();
+  }, [refreshAssets]);
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl());
-
-    // Update state when map moves
-    map.current.on('move', () => {
-      setLng(map.current.getCenter().lng.toFixed(4));
-      setLat(map.current.getCenter().lat.toFixed(4));
-      setZoom(map.current.getZoom().toFixed(2));
-    });
-  }, [lng, lat, zoom, themeMode]); // Add themeMode to dependencies
-
-  // Also update the map style when theme changes
-  useEffect(() => {
-    if (!map.current) return;
-    
-    const mapStyle = themeMode === 'dark' 
-      ? "mapbox://styles/mapbox/dark-v10" 
-      : "mapbox://styles/mapbox/streets-v11";
-      
-    map.current.setStyle(mapStyle);
-  }, [themeMode]);
-
-  // Add markers for assets
-  useEffect(() => {
-    if (!map.current || !assets) return;
-
-    // Clear existing markers before adding new ones to prevent duplicates
-    const markers = document.getElementsByClassName('mapboxgl-marker');
-    while (markers[0]) {
-      markers[0].parentNode.removeChild(markers[0]);
-    }
-
-    // Iterate through each asset and create a marker on the map
-    assets.forEach(asset => {
-      // Create a marker with color based on asset type
-      const marker = new mapboxgl.Marker({ 
-        color: getMarkerColor(asset.type) 
-      })
-        .setLngLat([asset.longitude, asset.latitude])
-        .setPopup(
-          // Create a popup with styled HTML to ensure visibility in both light and dark themes
-          new mapboxgl.Popup()
-            .setHTML(`
-              <div style="color: #333; background-color: #fff; padding: 8px; border-radius: 4px;">
-                <h3 style="margin-top: 0; color: #1a73e8; font-weight: 500;">${asset.name}</h3>
-                <p style="margin: 5px 0; color: #333;">Type: ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)}</p>
-                <p style="margin: 5px 0; color: #333;">Comments: ${asset.comments || 'None'}</p>
-              </div>
-            `)
-    )
-    .addTo(map.current);
+  const { data, mutate } = useSWR("http://localhost:3001/api/assets", fetcher, {
+    suspense: false,
   });
-}, [assets]);
-
-  // Helper function to get marker color based on asset type
-  const getMarkerColor = (type) => {
-    switch (type) {
-      case 'well':
-        return '#1a73e8'; // blue
-      case 'motor':
-        return '#00c853'; // green
-      case 'transformer':
-        return '#f57c00'; // orange
-      default:
-        return '#e53935'; // red
-    }
-  };
 
   // Set up WebSocket connection
   useEffect(() => {
-    const socket = io('http://localhost:5000');
-    
-    socket.on('newAsset', (asset) => {
+    if (!socket) return;
+
+    console.log("Socket conectado en Dashboard:", socket.connected);
+
+    socket.on("newAsset", (asset) => {
+      console.log("Evento newAsset recibido:", asset);
       mutate();
-      addNotification(`New asset "${asset.name}" added`);
+      refreshAssets(); // Añadir esta línea para actualizar el contexto AssetsContext
+      addNotification(`Nuevo activo "${asset.name}" añadido`, "success", true);
     });
-    
-    socket.on('updateAsset', (asset) => {
+
+    socket.on("updateAsset", (asset) => {
+      console.log("Evento updateAsset recibido:", asset);
       mutate();
-      addNotification(`Asset "${asset.name}" updated`);
+      refreshAssets(); // Añadir esta línea para actualizar el contexto AssetsContext
+      addNotification(`Activo "${asset.name}" actualizado`, "info", true);
     });
-    
-    socket.on('deleteAsset', (assetId) => {
+
+    socket.on("deleteAsset", (assetId) => {
+      console.log("Evento deleteAsset recibido:", assetId);
       mutate();
-      addNotification(`Asset removed`);
+      refreshAssets(); // Añadir esta línea para actualizar el contexto AssetsContext
+      addNotification(`Activo eliminado`, "warning", true);
     });
-    
+
+    // Eliminar la notificación de prueba que no quieres
+    // addNotification('Dashboard cargado correctamente', 'success');
+
     return () => {
-      socket.disconnect();
+      if (socket) {
+        socket.off("newAsset");
+        socket.off("updateAsset");
+        socket.off("deleteAsset");
+      }
     };
-  }, [mutate]);
+  }, [socket, mutate, addNotification, refreshAssets]);
 
-  const addNotification = (message) => {
-    setNotifications(prev => [
-      { id: Date.now(), message, time: new Date() },
-      ...prev.slice(0, 4) // Keep only the 5 most recent notifications
-    ]);
-  };
-
-  // Count assets by type
-  const assetCounts = assets ? {
-    total: assets.length,
-    well: assets.filter(a => a.type === 'well').length,
-    motor: assets.filter(a => a.type === 'motor').length,
-    transformer: assets.filter(a => a.type === 'transformer').length
-  } : { total: 0, well: 0, motor: 0, transformer: 0 };
+  // Contar activos por tipo
+  const assetCounts = assets
+    ? {
+        total: assets.length,
+        well: assets.filter((a) => a.type === "well").length,
+        motor: assets.filter((a) => a.type === "motor").length,
+        transformer: assets.filter((a) => a.type === "transformer").length,
+      }
+    : { total: 0, well: 0, motor: 0, transformer: 0 };
 
   return (
     <MainLayout>
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Asset Dashboard
+          Panel de Control
         </Typography>
         <Typography variant="body1" color="textSecondary">
-          Monitor and manage your assets in real-time
+          Monitoreo de activos en tiempo real
         </Typography>
       </Box>
-      
-      <Grid container spacing={3}>
-        {/* Asset Summary Cards */}
-        <Grid item xs={12} md={3}>
+
+      {/* Tarjetas de estadísticas */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="primary">
-                {assetCounts.total}
-              </Typography>
-              <Typography variant="body1" color="textSecondary">
-                Total Assets
-              </Typography>
+            <CardContent sx={{ display: "flex", alignItems: "center" }}>
+              <Avatar sx={{ bgcolor: "primary.main", mr: 2 }}>
+                <LocationOn />
+              </Avatar>
+              <Box>
+                <Typography variant="h5">{assetCounts.total}</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Total Activos
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
-        
-        <Grid item xs={12} md={3}>
+
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="primary">
-                {assetCounts.well}
-              </Typography>
-              <Typography variant="body1" color="textSecondary">
-                Wells
-              </Typography>
+            <CardContent sx={{ display: "flex", alignItems: "center" }}>
+              <AssetTypeIcon type="well" />
+              <Box sx={{ ml: 2 }}>
+                <Typography variant="h5">{assetCounts.well}</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Pozos
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
-        
-        <Grid item xs={12} md={3}>
+
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="secondary">
-                {assetCounts.motor}
-              </Typography>
-              <Typography variant="body1" color="textSecondary">
-                Motors
-              </Typography>
+            <CardContent sx={{ display: "flex", alignItems: "center" }}>
+              <AssetTypeIcon type="motor" />
+              <Box sx={{ ml: 2 }}>
+                <Typography variant="h5">{assetCounts.motor}</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Motores
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
-        
-        <Grid item xs={12} md={3}>
+
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" style={{ color: '#ff9800' }}>
-                {assetCounts.transformer}
-              </Typography>
-              <Typography variant="body1" color="textSecondary">
-                Transformers
-              </Typography>
+            <CardContent sx={{ display: "flex", alignItems: "center" }}>
+              <AssetTypeIcon type="transformer" />
+              <Box sx={{ ml: 2 }}>
+                <Typography variant="h5">{assetCounts.transformer}</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Transformadores
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
-        </Grid>
-        
-        {/* Map */}
-        <Grid item xs={12} md={8}>
-          <Card sx={{ height: '500px' }}>
-            <CardHeader 
-              title="Asset Map" 
-              subheader={`Current view: ${lng}, ${lat} | Zoom: ${zoom}`} 
-            />
-            <Divider />
-            <Box sx={{ height: 'calc(100% - 73px)' }}>
-              <div ref={mapContainer} style={{ height: '100%', width: '100%' }} />
-            </Box>
-          </Card>
-        </Grid>
-        
-        {/* Notifications and Recent Assets */}
-        <Grid item xs={12} md={4}>
-          <Grid container spacing={3} direction="column">
-            <Grid item>
-              <Card>
-                <CardHeader 
-                  title="Recent Notifications" 
-                  avatar={<Avatar sx={{ bgcolor: 'primary.main' }}><NotificationsIcon /></Avatar>}
-                />
-                <Divider />
-                <List sx={{ maxHeight: '200px', overflow: 'auto' }}>
-                  {notifications.length > 0 ? (
-                    notifications.map(notification => (
-                      <ListItem key={notification.id} divider>
-                        <ListItemText 
-                          primary={notification.message}
-                          secondary={new Date(notification.time).toLocaleTimeString()}
-                        />
-                      </ListItem>
-                    ))
-                  ) : (
-                    <ListItem>
-                      <ListItemText primary="No recent notifications" />
-                    </ListItem>
-                  )}
-                </List>
-              </Card>
-            </Grid>
-            
-            <Grid item>
-              <Card>
-                <CardHeader title="Recent Assets" />
-                <Divider />
-                <List sx={{ maxHeight: '230px', overflow: 'auto' }}>
-                  {assets && assets.length > 0 ? (
-                    assets.slice(0, 5).map(asset => (
-                      <ListItem key={asset.id} divider>
-                        <ListItemIcon>
-                          <AssetTypeIcon type={asset.type} />
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary={asset.name}
-                          secondary={`Type: ${asset.type}`}
-                        />
-                        <Chip 
-                          label={`ID: ${asset.id}`} 
-                          size="small" 
-                          variant="outlined" 
-                        />
-                      </ListItem>
-                    ))
-                  ) : (
-                    <ListItem>
-                      <ListItemText primary="No assets found" />
-                    </ListItem>
-                  )}
-                </List>
-              </Card>
-            </Grid>
-          </Grid>
         </Grid>
       </Grid>
+
+      {/* Mapa y Notificaciones */}
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Mapa de Activos
+            </Typography>
+            <DashboardMap />
+          </Paper>
+
+          {/* Lista de activos recientes */}
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Activos Recientes
+            </Typography>
+            <List>
+              {assets &&
+                assets.slice(0, 5).map((asset) => (
+                  <ListItem key={asset.id} divider>
+                    <ListItemIcon>
+                      <AssetTypeIcon type={asset.type} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={asset.name}
+                      secondary={`${asset.latitude.toFixed(
+                        4
+                      )}, ${asset.longitude.toFixed(4)}`}
+                    />
+                    <Chip
+                      label={
+                        asset.type.charAt(0).toUpperCase() + asset.type.slice(1)
+                      }
+                      size="small"
+                      sx={{ bgcolor: getAssetColor(asset.type), color: '#fff' }}
+                    />
+                  </ListItem>
+                ))}
+              {(!assets || assets.length === 0) && (
+                <ListItem>
+                  <ListItemText primary="No hay activos disponibles" />
+                </ListItem>
+              )}
+            </List>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <RecentNotifications />
+        </Grid>
+      </Grid>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Typography variant="h4" gutterBottom>
+            Panel de Control
+          </Typography>
+          <Typography variant="body1" color="textSecondary">
+            Monitoreo de activos en tiempo real
+          </Typography>
+        </div>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={() => {
+            console.log("Refrescando activos manualmente");
+            refreshAssets();
+          }}
+        >
+          Actualizar Activos
+        </Button>
+      </Box>
     </MainLayout>
   );
-};
+}
 
 export default Dashboard;
+
+// Refresco automático cada 30 segundos
+useEffect(() => {
+  const interval = setInterval(() => {
+    console.log("Refrescando activos automáticamente");
+    refreshAssets();
+  }, 30000); // 30 segundos
+  
+  return () => clearInterval(interval);
+}, [refreshAssets]);

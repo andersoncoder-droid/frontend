@@ -1,205 +1,222 @@
 import React, { useState, useContext } from 'react';
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Typography, 
+import {
   Paper,
-  Grid,
+  Typography,
+  TextField,
+  Button,
+  Box,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Select
+  IconButton,
+  InputAdornment,
+  CircularProgress,
 } from '@mui/material';
-import axios from 'axios';
+import CloseIcon from '@mui/icons-material/Close';
 import { AssetsContext } from '../context/AssetsContext';
 
 const assetTypes = [
-  { value: 'well', label: 'Well' },
+  { value: 'well', label: 'Pozo' },
   { value: 'motor', label: 'Motor' },
-  { value: 'transformer', label: 'Transformer' },
-  { value: 'pipeline', label: 'Pipeline' },
-  { value: 'other', label: 'Other' }
+  { value: 'transformer', label: 'Transformador' },
 ];
 
 const AddAssetForm = ({ onAssetAdded }) => {
+  const { addAsset } = useContext(AssetsContext);
   const [formData, setFormData] = useState({
     name: '',
-    type: '',
+    type: 'well',
     latitude: '',
     longitude: '',
-    comments: ''
+    comments: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { addAsset } = useContext(AssetsContext);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+    
+    // Limpiar error cuando el usuario escribe
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: '',
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'El nombre es obligatorio';
+    }
+    
+    if (!formData.latitude) {
+      newErrors.latitude = 'La latitud es obligatoria';
+    } else if (isNaN(formData.latitude) || formData.latitude < -90 || formData.latitude > 90) {
+      newErrors.latitude = 'La latitud debe ser un número entre -90 y 90';
+    }
+    
+    if (!formData.longitude) {
+      newErrors.longitude = 'La longitud es obligatoria';
+    } else if (isNaN(formData.longitude) || formData.longitude < -180 || formData.longitude > 180) {
+      newErrors.longitude = 'La longitud debe ser un número entre -180 y 180';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      // Validate coordinates are numbers
-      const lat = parseFloat(formData.latitude);
-      const lng = parseFloat(formData.longitude);
-      
-      if (isNaN(lat) || isNaN(lng)) {
-        throw new Error('Latitude and longitude must be valid numbers');
+    
+    if (validateForm()) {
+      try {
+        setIsSubmitting(true);
+        
+        // Convertir coordenadas a números
+        const newAsset = {
+          ...formData,
+          latitude: parseFloat(formData.latitude),
+          longitude: parseFloat(formData.longitude),
+        };
+        
+        // Añadir el activo a través del contexto (que ahora usa la API)
+        const savedAsset = await addAsset(newAsset);
+        
+        // Notificar al componente padre
+        if (onAssetAdded) {
+          onAssetAdded(savedAsset);
+        }
+        
+        // Limpiar el formulario
+        setFormData({
+          name: '',
+          type: 'well',
+          latitude: '',
+          longitude: '',
+          comments: '',
+        });
+        
+        console.log('Activo añadido:', savedAsset);
+      } catch (err) {
+        console.error('Error al guardar el activo:', err);
+      } finally {
+        setIsSubmitting(false);
       }
-      
-      // Create new asset with parsed coordinates
-      const newAsset = {
-        id: Date.now(),
-        ...formData,
-        latitude: lat,
-        longitude: lng,
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add to global context
-      addAsset(newAsset);
-      
-      // Call the callback function to update the parent component
-      if (onAssetAdded) onAssetAdded(newAsset);
-      
-      // Reset form
-      setFormData({
-        name: '',
-        type: '',
-        latitude: '',
-        longitude: '',
-        comments: ''
-      });
-      
-    } catch (err) {
-      setError(err.message || 'Error adding asset');
-      console.error('Error adding asset:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <Paper sx={{ p: 3, mb: 3 }}>
+    <Paper sx={{ p: 3, position: 'relative' }}>
+      <IconButton
+        sx={{ position: 'absolute', top: 8, right: 8 }}
+        onClick={() => onAssetAdded()}
+      >
+        <CloseIcon />
+      </IconButton>
+      
       <Typography variant="h6" gutterBottom>
-        Add New Asset
+        Añadir Nuevo Activo
       </Typography>
       
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
-      
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              required
-              fullWidth
-              label="Asset Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Asset Type</InputLabel>
-              <Select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                label="Asset Type"
-              >
-                {assetTypes.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              required
-              fullWidth
-              label="Latitude"
-              name="latitude"
-              type="number"
-              inputProps={{ 
-                step: 'any',
-                style: { appearance: 'textfield' } // Removes spinners in most browsers
-              }}
-              sx={{
-                '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
-                  '-webkit-appearance': 'none',
-                  margin: 0,
-                },
-                '& input[type=number]': {
-                  '-moz-appearance': 'textfield', // Removes spinners in Firefox
-                },
-              }}
-              value={formData.latitude}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              required
-              fullWidth
-              label="Longitude"
-              name="longitude"
-              type="number"
-              inputProps={{ 
-                step: 'any',
-                style: { appearance: 'textfield' } // Removes spinners in most browsers
-              }}
-              sx={{
-                '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
-                  '-webkit-appearance': 'none',
-                  margin: 0,
-                },
-                '& input[type=number]': {
-                  '-moz-appearance': 'textfield', // Removes spinners in Firefox
-                },
-              }}
-              value={formData.longitude}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Comments"
-              name="comments"
-              multiline
-              rows={3}
-              value={formData.comments}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <Button 
-              type="submit" 
-              variant="contained" 
-              color="primary"
-              disabled={loading}
-              fullWidth
-            >
-              {loading ? 'Adding...' : 'Add Asset'}
-            </Button>
-          </Grid>
-        </Grid>
+      <Box component="form" onSubmit={handleSubmit} noValidate>
+        <TextField
+          margin="normal"
+          required
+          fullWidth
+          id="name"
+          label="Nombre del Activo"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          error={!!errors.name}
+          helperText={errors.name}
+          disabled={isSubmitting}
+        />
+        
+        <TextField
+          margin="normal"
+          required
+          fullWidth
+          select
+          id="type"
+          label="Tipo de Activo"
+          name="type"
+          value={formData.type}
+          onChange={handleChange}
+          disabled={isSubmitting}
+        >
+          {assetTypes.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
+        
+        <TextField
+          margin="normal"
+          required
+          fullWidth
+          id="latitude"
+          label="Latitud"
+          name="latitude"
+          value={formData.latitude}
+          onChange={handleChange}
+          error={!!errors.latitude}
+          helperText={errors.latitude}
+          InputProps={{
+            endAdornment: <InputAdornment position="end">°</InputAdornment>,
+          }}
+          disabled={isSubmitting}
+        />
+        
+        <TextField
+          margin="normal"
+          required
+          fullWidth
+          id="longitude"
+          label="Longitud"
+          name="longitude"
+          value={formData.longitude}
+          onChange={handleChange}
+          error={!!errors.longitude}
+          helperText={errors.longitude}
+          InputProps={{
+            endAdornment: <InputAdornment position="end">°</InputAdornment>,
+          }}
+          disabled={isSubmitting}
+        />
+        
+        <TextField
+          margin="normal"
+          fullWidth
+          id="comments"
+          label="Comentarios"
+          name="comments"
+          value={formData.comments}
+          onChange={handleChange}
+          multiline
+          rows={3}
+          disabled={isSubmitting}
+        />
+        
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          sx={{ mt: 3, mb: 2 }}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : (
+            'Añadir Activo'
+          )}
+        </Button>
       </Box>
     </Paper>
   );

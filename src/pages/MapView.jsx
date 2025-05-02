@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Box, Typography, Paper, Fab } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import MapComponent from '../components/MapComponent';
@@ -7,12 +7,21 @@ import MainLayout from '../components/layout/MainLayout';
 import { AssetsContext } from '../context/AssetsContext';
 
 const MapView = () => {
-  const { assets } = useContext(AssetsContext);
+  const { assets, refreshAssets } = useContext(AssetsContext);
   const [showForm, setShowForm] = useState(false);
   
+  // Efecto para actualizar los assets cuando se monta el componente
+  useEffect(() => {
+    console.log('MapView - Assets actuales:', assets);
+    // Opcional: Refrescar los assets al montar el componente
+    refreshAssets();
+  }, [refreshAssets]);
+  
   const handleAssetAdded = (newAsset) => {
-    // The addAsset function will be called in the AddAssetForm component
-    setShowForm(false); // Hide form after adding
+    console.log('Nuevo asset añadido:', newAsset);
+    setShowForm(false); // Ocultar formulario después de añadir
+    // Opcional: Refrescar los assets después de añadir uno nuevo
+    refreshAssets();
   };
 
   return (
@@ -28,7 +37,8 @@ const MapView = () => {
       
       <Box sx={{ position: 'relative', width: '100%' }}>
         <Paper sx={{ p: 2 }}>
-          <MapComponent />
+          {/* Pasar los assets como prop al componente del mapa */}
+          <MapComponent assets={assets} />
         </Paper>
         
         {/* Floating action button to show/hide form */}

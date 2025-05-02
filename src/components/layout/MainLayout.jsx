@@ -1,31 +1,39 @@
 import React, { useState, useContext } from 'react';
-import { 
-  Box, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
+import {
+  Box,
+  Drawer,
+  AppBar,
+  Toolbar,
+  List,
+  Typography,
+  Divider,
   IconButton,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
   Avatar,
   Menu,
   MenuItem,
-  Divider
+  useTheme,
 } from '@mui/material';
-import { 
-  Menu as MenuIcon, 
-  Dashboard, 
-  Map, 
-  People, 
-  Settings,
-  ExitToApp
+import {
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  Map as MapIcon,
+  People as PeopleIcon,
+  Settings as SettingsIcon,
+  ChevronLeft as ChevronLeftIcon,
+  AccountCircle,
+  Logout,
+  Brightness4,
+  Brightness7,
 } from '@mui/icons-material';
+import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import ThemeToggle from '../ThemeToggle';
+import { ThemeContext } from '../../context/ThemeContext';
+import { NotificationContext } from '../../context/NotificationContext';
+import Notification from '../Notification';
 
 const drawerWidth = 240;
 
@@ -33,7 +41,10 @@ const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const { user, logout } = useContext(AuthContext);
+  const { darkMode, toggleTheme } = useContext(ThemeContext);
+  const { notifications } = useContext(NotificationContext);
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -53,15 +64,15 @@ const MainLayout = ({ children }) => {
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
-    { text: 'Map View', icon: <Map />, path: '/map' },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Map View', icon: <MapIcon />, path: '/map' },
   ];
 
   // Add admin-only menu items
   if (user && user.role === 'admin') {
     menuItems.push(
-      { text: 'User Management', icon: <People />, path: '/users' },
-      { text: 'Settings', icon: <Settings />, path: '/settings' }
+      { text: 'User Management', icon: <PeopleIcon />, path: '/users' },
+      { text: 'Settings', icon: <SettingsIcon />, path: '/settings' }
     );
   }
 
@@ -90,19 +101,13 @@ const MainLayout = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-        }}
-      >
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
           <IconButton
             color="inherit"
             aria-label="open drawer"
-            edge="start"
             onClick={handleDrawerToggle}
+            edge="start"
             sx={{ mr: 2, display: { sm: 'none' } }}
           >
             <MenuIcon />
@@ -111,47 +116,44 @@ const MainLayout = ({ children }) => {
             Decimetrix Asset Management
           </Typography>
           
-          {/* Theme Toggle Button */}
-          <ThemeToggle />
-          
-          {/* User Profile */}
-          <IconButton
-            edge="end"
-            color="inherit"
-            onClick={handleProfileMenuOpen}
-          >
-            <Avatar sx={{ 
-              bgcolor: 'white', 
-              color: 'primary.main',
-              boxShadow: 1
-            }}>
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
-            </Avatar>
+          {/* Botón para cambiar tema */}
+          <IconButton color="inherit" onClick={toggleTheme}>
+            {darkMode ? <Brightness7 /> : <Brightness4 />}
           </IconButton>
           
-          {/* Profile Menu */}
+          <IconButton
+            size="large"
+            edge="end"
+            aria-label="account of current user"
+            aria-controls="menu-appbar"
+            aria-haspopup="true"
+            onClick={handleProfileMenuOpen}
+            color="inherit"
+          >
+            <Avatar sx={{ width: 32, height: 32 }}>
+              {user?.name?.charAt(0) || <AccountCircle />}
+            </Avatar>
+          </IconButton>
           <Menu
+            id="menu-appbar"
             anchorEl={anchorEl}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            keepMounted
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
             open={Boolean(anchorEl)}
             onClose={handleProfileMenuClose}
           >
-            <MenuItem disabled>
-              <Typography variant="body2">
-                Signed in as <strong>{user?.username || 'User'}</strong>
-              </Typography>
-            </MenuItem>
-            <Divider />
-            <MenuItem onClick={() => { handleProfileMenuClose(); navigate('/settings'); }}>
-              <ListItemIcon>
-                <Settings fontSize="small" />
-              </ListItemIcon>
-              Settings
-            </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
-                <ExitToApp fontSize="small" />
+                <Logout fontSize="small" />
               </ListItemIcon>
-              Logout
+              <ListItemText>Cerrar sesión</ListItemText>
             </MenuItem>
           </Menu>
         </Toolbar>

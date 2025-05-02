@@ -5,32 +5,46 @@ import styled from "styled-components";
 import { SocketContext } from "../context/SocketContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { AssetsContext } from "../context/AssetsContext";
+import {
+  getAssetIcon,
+  getAssetColor,
+  getIconBackground,
+} from "../utils/assetIcons";
 
 // Use a valid public Mapbox token
-mapboxgl.accessToken = 'pk.eyJ1IjoiYW5kZXJzb25sb3NhZGEiLCJhIjoiY203eTNlNXdoMDVvMTJqb2thanV1YTU3NSJ9.mR2ivDi1z73GMHc-sIZpHQ';
+mapboxgl.accessToken =
+  "pk.eyJ1IjoiYW5kZXJzb25sb3NhZGEiLCJhIjoiY203eTNlNXdoMDVvMTJqb2thanV1YTU3NSJ9.mR2ivDi1z73GMHc-sIZpHQ";
 
 // Add custom CSS for popups to ensure they're visible in both themes
-const customPopupStyle = `
-  .mapboxgl-popup-content {
-    background-color: #ffffff;
-    color: #333333;
-    padding: 12px;
-    border-radius: 6px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
-  .mapboxgl-popup-content h3 {
-    margin-top: 0;
-    color: #1a73e8;
-    font-weight: 500;
-  }
-  .mapboxgl-popup-content p {
-    margin: 5px 0;
-    color: #333333;
-  }
-  .mapboxgl-popup-close-button {
-    color: #333333;
-  }
-`;
+const getCustomPopupStyle = (themeMode) => {
+  const isDarkMode = themeMode === 'dark';
+  
+  return `
+    .mapboxgl-popup-content {
+      background-color: ${isDarkMode ? '#333333' : '#ffffff'};
+      color: ${isDarkMode ? '#ffffff' : '#333333'};
+      padding: 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .mapboxgl-popup-content h3 {
+      margin-top: 0;
+      color: ${isDarkMode ? '#64b5f6' : '#1a73e8'};
+      font-weight: 500;
+    }
+    .mapboxgl-popup-content p {
+      margin: 5px 0;
+      color: ${isDarkMode ? '#e0e0e0' : '#333333'};
+    }
+    .mapboxgl-popup-close-button {
+      color: ${isDarkMode ? '#ffffff' : '#333333'};
+    }
+    .mapboxgl-popup-tip {
+      border-top-color: ${isDarkMode ? '#333333' : '#ffffff'};
+      border-bottom-color: ${isDarkMode ? '#333333' : '#ffffff'};
+    }
+  `;
+};
 
 const MapWrapper = styled.div`
   width: 100%;
@@ -41,8 +55,8 @@ const MapWrapper = styled.div`
 
 // Create a map style context to share map style across components
 export const getMapStyle = (themeMode) => {
-  return themeMode === 'dark' 
-    ? "mapbox://styles/mapbox/dark-v10" 
+  return themeMode === "dark"
+    ? "mapbox://styles/mapbox/dark-v10"
     : "mapbox://styles/mapbox/streets-v11";
 };
 
@@ -56,7 +70,7 @@ const MapComponent = () => {
   // Handle socket events for real-time updates
   useEffect(() => {
     if (!socket) return;
-    
+
     socket.on("new_asset", (asset) => {
       addAsset(asset);
     });
@@ -66,35 +80,38 @@ const MapComponent = () => {
     };
   }, [socket, addAsset]);
 
-  // Add custom popup styles when component mounts
+  // Add custom popup styles when component mounts or theme changes
   useEffect(() => {
+    // Get custom popup style based on theme mode
+    const customPopupStyle = getCustomPopupStyle(themeMode);
+    
     // Add custom styles to head
     const styleElement = document.createElement('style');
     styleElement.textContent = customPopupStyle;
     document.head.appendChild(styleElement);
 
-    // Clean up on unmount
+    // Clean up on unmount or theme change
     return () => {
       document.head.removeChild(styleElement);
     };
-  }, []);
+  }, [themeMode]);
 
   // Initialize map
   useEffect(() => {
     // Get map style based on theme mode
     const mapStyle = getMapStyle(themeMode);
-      
+
     if (mapInstance.current) {
       mapInstance.current.setStyle(mapStyle);
       return;
     }
-    
+
     // Create map instance
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: mapStyle,
-      center: [-74.5, 40], // Initial coordinates
-      zoom: 9,
+      center: [-74.0721, 4.711], // Coordenadas de Colombia (Bogotá)
+      zoom: 6,
     });
 
     // Add navigation controls
@@ -113,17 +130,35 @@ const MapComponent = () => {
   useEffect(() => {
     if (!mapInstance.current || !assets || assets.length === 0) return;
 
+    const isDarkMode = themeMode === 'dark';
+
     const addMarkers = () => {
       // Clear existing markers
-      const markers = document.getElementsByClassName('mapboxgl-marker');
+      const markers = document.getElementsByClassName("mapboxgl-marker");
       while (markers[0]) {
         markers[0].parentNode.removeChild(markers[0]);
       }
 
       // Add markers for each asset
       assets.forEach((asset) => {
-        // Create a marker
-        const marker = new mapboxgl.Marker({ color: getMarkerColor(asset.type) })
+        // Crear el elemento HTML para el icono personalizado
+        const el = document.createElement("div");
+        el.className = `asset-marker asset-marker-${asset.type}`;
+        el.style.width = "30px";
+        el.style.height = "30px";
+        el.style.backgroundSize = "70%";
+        el.style.backgroundRepeat = "no-repeat";
+        el.style.backgroundPosition = "center";
+        el.style.backgroundImage = `url("${getAssetIcon(asset.type)}")`;
+        el.style.backgroundColor = getIconBackground(asset.type, isDarkMode);
+        el.style.borderRadius = "50%";
+        el.style.border = "2px solid white";
+        el.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)";
+
+        // Create a marker sin color adicional ya que usamos el fondo del div
+        const marker = new mapboxgl.Marker({ 
+          element: el
+        })
           .setLngLat([asset.longitude, asset.latitude])
           .setPopup(
             new mapboxgl.Popup().setHTML(`
@@ -134,6 +169,15 @@ const MapComponent = () => {
           )
           .addTo(mapInstance.current);
       });
+
+      // Ajustar el mapa para mostrar todos los marcadores
+      if (assets.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        assets.forEach((asset) => {
+          bounds.extend([asset.longitude, asset.latitude]);
+        });
+        mapInstance.current.fitBounds(bounds, { padding: 50 });
+      }
     };
 
     // If map is already loaded, add markers immediately
@@ -141,23 +185,9 @@ const MapComponent = () => {
       addMarkers();
     } else {
       // Otherwise wait for map to load
-      mapInstance.current.on('load', addMarkers);
+      mapInstance.current.on("load", addMarkers);
     }
   }, [assets, themeMode]);
-
-  // Helper function to get marker color based on asset type
-  const getMarkerColor = (type) => {
-    switch (type) {
-      case 'well':
-        return '#1a73e8'; // blue
-      case 'motor':
-        return '#00c853'; // green
-      case 'transformer':
-        return '#f57c00'; // orange
-      default:
-        return '#e53935'; // red
-    }
-  };
 
   return <MapWrapper ref={mapContainer} />;
 };
