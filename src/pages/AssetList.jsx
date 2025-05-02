@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -12,18 +12,34 @@ import {
   IconButton,
   Chip,
   Button,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { Edit, Delete, LocationOn, Add } from '@mui/icons-material';
 import { AssetsContext } from '../context/AssetsContext';
 import { AuthContext } from '../context/AuthContext';
 import MainLayout from '../components/layout/MainLayout';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import AddAssetForm from '../components/AddAssetForm';
 
 const AssetList = () => {
-  const { assets, loading, error, deleteAsset, canEditAssets } = useContext(AssetsContext);
+  const { assets, loading, error, deleteAsset, canEditAssets, refreshAssets } = useContext(AssetsContext);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [openAddDialog, setOpenAddDialog] = React.useState(false);
+  const [openEditDialog, setOpenEditDialog] = React.useState(false);
+  const [selectedAsset, setSelectedAsset] = React.useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false);
+
+  // Actualizar los activos cuando se monta el componente
+  useEffect(() => {
+    refreshAssets();
+  }, [refreshAssets]);
 
   const getAssetTypeColor = (type) => {
     switch (type) {
@@ -44,7 +60,40 @@ const AssetList = () => {
   };
 
   const handleAddAsset = () => {
-    navigate('/map');
+    setOpenAddDialog(true);
+  };
+
+  const handleEditAsset = (asset) => {
+    setSelectedAsset(asset);
+    setOpenEditDialog(true);
+  };
+
+  const handleDeleteAsset = (asset) => {
+    setSelectedAsset(asset);
+    setOpenDeleteDialog(true);
+  };
+
+  const confirmDeleteAsset = async () => {
+    if (selectedAsset) {
+      await deleteAsset(selectedAsset.id);
+      setOpenDeleteDialog(false);
+      setSelectedAsset(null);
+    }
+  };
+
+  const handleAssetAdded = () => {
+    setOpenAddDialog(false);
+    refreshAssets();
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es });
+    } catch (error) {
+      console.error('Error al formatear fecha:', error);
+      return 'Fecha inválida';
+    }
   };
 
   if (loading) return (
@@ -89,6 +138,8 @@ const AssetList = () => {
               <TableCell>Nombre</TableCell>
               <TableCell>Tipo</TableCell>
               <TableCell>Ubicación</TableCell>
+              <TableCell>Fecha Creación</TableCell>
+              <TableCell>Creado Por</TableCell>
               <TableCell>Comentarios</TableCell>
               {canEditAssets() && <TableCell>Acciones</TableCell>}
             </TableRow>
@@ -96,7 +147,7 @@ const AssetList = () => {
           <TableBody>
             {assets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canEditAssets() ? 6 : 5} align="center">
+                <TableCell colSpan={canEditAssets() ? 8 : 7} align="center">
                   No hay activos registrados
                 </TableCell>
               </TableRow>
@@ -118,15 +169,17 @@ const AssetList = () => {
                       {asset.latitude.toFixed(4)}, {asset.longitude.toFixed(4)}
                     </Box>
                   </TableCell>
+                  <TableCell>{formatDate(asset.createdAt)}</TableCell>
+                  <TableCell>{asset.createdBy || 'Desconocido'}</TableCell>
                   <TableCell>{asset.comments || 'Sin comentarios'}</TableCell>
                   {canEditAssets() && (
                     <TableCell>
-                      <IconButton size="small" onClick={() => navigate(`/assets/edit/${asset.id}`)}>
+                      <IconButton size="small" onClick={() => handleEditAsset(asset)}>
                         <Edit fontSize="small" />
                       </IconButton>
                       <IconButton 
                         size="small" 
-                        onClick={() => deleteAsset(asset.id)}
+                        onClick={() => handleDeleteAsset(asset)}
                       >
                         <Delete fontSize="small" />
                       </IconButton>
@@ -138,6 +191,28 @@ const AssetList = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Diálogo para añadir activo */}
+      <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Añadir Nuevo Activo</DialogTitle>
+        <DialogContent>
+          <AddAssetForm onAssetAdded={handleAssetAdded} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para confirmar eliminación */}
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Está seguro de que desea eliminar el activo "{selectedAsset?.name}"?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>
+          <Button onClick={confirmDeleteAsset} color="error">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
     </MainLayout>
   );
 };

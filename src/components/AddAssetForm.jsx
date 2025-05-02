@@ -21,6 +21,7 @@ const assetTypes = [
 
 const AddAssetForm = ({ onAssetAdded }) => {
   const { addAsset } = useContext(AssetsContext);
+  const { user } = useContext(AuthContext);
   const [formData, setFormData] = useState({
     name: '',
     type: 'well',
@@ -82,9 +83,10 @@ const AddAssetForm = ({ onAssetAdded }) => {
           ...formData,
           latitude: parseFloat(formData.latitude),
           longitude: parseFloat(formData.longitude),
+          // La fecha de creación y el creador se añaden en el contexto
         };
         
-        // Añadir el activo a través del contexto (que ahora usa la API)
+        // Añadir el activo a través del contexto
         const savedAsset = await addAsset(newAsset);
         
         // Notificar al componente padre

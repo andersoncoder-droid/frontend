@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext } from "react";
+import React, { useEffect, useContext } from "react";
 import {
   Box,
   Typography,
@@ -6,23 +6,13 @@ import {
   Grid,
   Card,
   CardContent,
-  CardHeader,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Avatar,
-  Chip,
 } from "@mui/material";
 import {
   LocationOn,
-  Notifications as NotificationsIcon,
 } from "@mui/icons-material";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import axios from "axios";
-import useSWR from "swr";
 import { AuthContext } from "../context/AuthContext";
 import { AssetsContext } from "../context/AssetsContext";
 import { ThemeContext } from "../context/ThemeContext";
@@ -30,20 +20,11 @@ import { SocketContext } from "../context/SocketContext";
 import { NotificationContext } from "../context/NotificationContext";
 import MainLayout from "../components/layout/MainLayout";
 import RecentNotifications from "../components/RecentNotifications";
-import DashboardMap from "../components/DashboardMap";
 import { getAssetIcon, getAssetColor } from "../utils/assetIcons";
+import DashboardMap from "../components/DashboardMap";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYW5kZXJzb25sb3NhZGEiLCJhIjoiY203eTNlNXdoMDVvMTJqb2thanV1YTU3NSJ9.mR2ivDi1z73GMHc-sIZpHQ";
-
-const fetcher = (url) =>
-  axios
-    .get(url, {
-      headers: {
-        "x-auth-token": localStorage.getItem("token"),
-      },
-    })
-    .then((res) => res.data);
 
 const AssetTypeIcon = ({ type }) => {
   return (
@@ -61,23 +42,42 @@ const AssetTypeIcon = ({ type }) => {
 };
 
 function Dashboard() {
-  const { assets, loading, error, refreshAssets } = useContext(AssetsContext);
-  const { darkMode } = useContext(ThemeContext);
+  const { assets, loading, refreshAssets } = useContext(AssetsContext);
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
   const { addNotification } = useContext(NotificationContext);
 
-  // Añadir este efecto para refrescar los activos cuando se monta el componente
+  // Efecto para actualizar los activos al montar el componente
   useEffect(() => {
-    console.log('Dashboard - Refrescando activos');
+    console.log('Dashboard - Refrescando activos al iniciar');
     refreshAssets();
+    
+    // También refrescar cuando el componente se vuelve a montar
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Dashboard visible - Refrescando activos');
+        refreshAssets();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshAssets]);
 
-  const { data, mutate } = useSWR("http://localhost:3001/api/assets", fetcher, {
-    suspense: false,
-  });
+  // Refresco automático cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("Refrescando activos automáticamente");
+      refreshAssets();
+    }, 30000); // 30 segundos
+    
+    return () => clearInterval(interval);
+  }, [refreshAssets]);
 
-  // Set up WebSocket connection
+  // Configuración de WebSocket para actualizaciones en tiempo real
   useEffect(() => {
     if (!socket) return;
 
@@ -85,27 +85,21 @@ function Dashboard() {
 
     socket.on("newAsset", (asset) => {
       console.log("Evento newAsset recibido:", asset);
-      mutate();
-      refreshAssets(); // Añadir esta línea para actualizar el contexto AssetsContext
+      refreshAssets();
       addNotification(`Nuevo activo "${asset.name}" añadido`, "success", true);
     });
 
     socket.on("updateAsset", (asset) => {
       console.log("Evento updateAsset recibido:", asset);
-      mutate();
-      refreshAssets(); // Añadir esta línea para actualizar el contexto AssetsContext
+      refreshAssets();
       addNotification(`Activo "${asset.name}" actualizado`, "info", true);
     });
 
     socket.on("deleteAsset", (assetId) => {
       console.log("Evento deleteAsset recibido:", assetId);
-      mutate();
-      refreshAssets(); // Añadir esta línea para actualizar el contexto AssetsContext
+      refreshAssets();
       addNotification(`Activo eliminado`, "warning", true);
     });
-
-    // Eliminar la notificación de prueba que no quieres
-    // addNotification('Dashboard cargado correctamente', 'success');
 
     return () => {
       if (socket) {
@@ -114,7 +108,7 @@ function Dashboard() {
         socket.off("deleteAsset");
       }
     };
-  }, [socket, mutate, addNotification, refreshAssets]);
+  }, [socket, addNotification, refreshAssets]);
 
   // Contar activos por tipo
   const assetCounts = assets
@@ -201,85 +195,19 @@ function Dashboard() {
       {/* Mapa y Notificaciones */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 2, mb: 3 }}>
+          <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Mapa de Activos
             </Typography>
             <DashboardMap />
           </Paper>
-
-          {/* Lista de activos recientes */}
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Activos Recientes
-            </Typography>
-            <List>
-              {assets &&
-                assets.slice(0, 5).map((asset) => (
-                  <ListItem key={asset.id} divider>
-                    <ListItemIcon>
-                      <AssetTypeIcon type={asset.type} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={asset.name}
-                      secondary={`${asset.latitude.toFixed(
-                        4
-                      )}, ${asset.longitude.toFixed(4)}`}
-                    />
-                    <Chip
-                      label={
-                        asset.type.charAt(0).toUpperCase() + asset.type.slice(1)
-                      }
-                      size="small"
-                      sx={{ bgcolor: getAssetColor(asset.type), color: '#fff' }}
-                    />
-                  </ListItem>
-                ))}
-              {(!assets || assets.length === 0) && (
-                <ListItem>
-                  <ListItemText primary="No hay activos disponibles" />
-                </ListItem>
-              )}
-            </List>
-          </Paper>
         </Grid>
-
         <Grid item xs={12} md={4}>
           <RecentNotifications />
         </Grid>
       </Grid>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <Typography variant="h4" gutterBottom>
-            Panel de Control
-          </Typography>
-          <Typography variant="body1" color="textSecondary">
-            Monitoreo de activos en tiempo real
-          </Typography>
-        </div>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={() => {
-            console.log("Refrescando activos manualmente");
-            refreshAssets();
-          }}
-        >
-          Actualizar Activos
-        </Button>
-      </Box>
     </MainLayout>
   );
 }
 
 export default Dashboard;
-
-// Refresco automático cada 30 segundos
-useEffect(() => {
-  const interval = setInterval(() => {
-    console.log("Refrescando activos automáticamente");
-    refreshAssets();
-  }, 30000); // 30 segundos
-  
-  return () => clearInterval(interval);
-}, [refreshAssets]);

@@ -20,6 +20,8 @@ const mockAssets = [
     latitude: 7.065,
     longitude: -73.8547,
     comments: "Pozo principal",
+    createdAt: "2023-05-15T10:30:00Z",
+    createdBy: "admin",
   },
   {
     id: 2,
@@ -28,6 +30,8 @@ const mockAssets = [
     latitude: 6.2476,
     longitude: -75.5658,
     comments: "Motor de alta potencia",
+    createdAt: "2023-06-20T14:45:00Z",
+    createdBy: "operator",
   },
   {
     id: 3,
@@ -36,6 +40,8 @@ const mockAssets = [
     latitude: 4.711,
     longitude: -74.0721,
     comments: "Transformador principal",
+    createdAt: "2023-07-05T09:15:00Z",
+    createdBy: "admin",
   },
   {
     id: 4,
@@ -44,6 +50,8 @@ const mockAssets = [
     latitude: 3.4516,
     longitude: -76.532,
     comments: "Pozo secundario",
+    createdAt: "2023-08-10T11:20:00Z",
+    createdBy: "operator",
   },
 ];
 
@@ -87,10 +95,15 @@ export const AssetsProvider = ({ children }) => {
       // Comentar la petición a la API
       // const response = await api.post('/api/assets', newAsset);
 
-      // Crear un nuevo activo con ID generado
+      // Crear un nuevo activo con ID generado y fecha de creación
       const newId =
         assets.length > 0 ? Math.max(...assets.map((a) => a.id)) + 1 : 1;
-      const createdAsset = { ...newAsset, id: newId };
+      const createdAsset = { 
+        ...newAsset, 
+        id: newId,
+        createdAt: new Date().toISOString(),
+        createdBy: user ? user.username : 'unknown'
+      };
 
       // Actualizar el estado local sin provocar una recarga completa
       const updatedAssets = [...assets, createdAsset];
@@ -172,7 +185,7 @@ export const AssetsProvider = ({ children }) => {
 
   // Verificar si el usuario puede editar/eliminar activos
   const canEditAssets = () => {
-    return user && user.role === "admin";
+    return user && (user.role === "admin" || user.role === "operator");
   };
 
   return (

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useContext } from 'react';
+import React, { useRef, useEffect, useContext, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import styled from 'styled-components';
@@ -51,96 +51,14 @@ const DashboardMap = () => {
   const { assets, refreshAssets } = useContext(AssetsContext);
   const { themeMode } = useContext(ThemeContext);
   const isDarkMode = themeMode === "dark";
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
   
   // Añadir este efecto para refrescar los activos cuando se monta el componente
   useEffect(() => {
     console.log('DashboardMap - Refrescando activos');
     refreshAssets();
+    setAssetsLoaded(true);
   }, [refreshAssets]);
-
-  useEffect(() => {
-    if (map.current) return;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: getMapStyle(themeMode),
-      center: [-74.0721, 4.711], // Coordenadas de Colombia (Bogotá)
-      zoom: 5,
-    });
-
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-    };
-  }, [themeMode]);
-
-  useEffect(() => {
-    if (!map.current || !assets || assets.length === 0) return;
-
-    // Esperar a que el mapa esté cargado
-    const addMarkers = () => {
-      // Limpiar marcadores existentes
-      const markers = document.getElementsByClassName("mapboxgl-marker");
-      while (markers[0]) {
-        markers[0].parentNode.removeChild(markers[0]);
-      }
-
-      // Añadir marcadores para cada activo
-      const bounds = new mapboxgl.LngLatBounds();
-
-      assets.forEach((asset) => {
-        // Crear elemento HTML para el icono personalizado
-        const el = document.createElement("div");
-        el.className = `asset-marker asset-marker-${asset.type}`;
-        el.style.width = "30px";
-        el.style.height = "30px";
-        el.style.backgroundSize = "70%";
-        el.style.backgroundRepeat = "no-repeat";
-        el.style.backgroundPosition = "center";
-        el.style.backgroundImage = `url("${getAssetIcon(asset.type)}")`;
-        el.style.backgroundColor = getIconBackground(asset.type, isDarkMode);
-        el.style.borderRadius = "50%";
-        el.style.border = "2px solid white";
-        el.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)";
-
-        // Crear marcador sin color adicional ya que usamos el fondo del div
-        new mapboxgl.Marker({
-          element: el,
-        })
-          .setLngLat([asset.longitude, asset.latitude])
-          .setPopup(
-            new mapboxgl.Popup({ offset: 25 }).setHTML(`
-              <h4>${asset.name}</h4>
-              <p>Tipo: ${
-                asset.type.charAt(0).toUpperCase() + asset.type.slice(1)
-              }</p>
-            `)
-          )
-          .addTo(map.current);
-
-        // Extender los límites para incluir este marcador
-        bounds.extend([asset.longitude, asset.latitude]);
-      });
-
-      // Ajustar el mapa para mostrar todos los marcadores
-      if (!bounds.isEmpty()) {
-        map.current.fitBounds(bounds, {
-          padding: 30,
-          maxZoom: 10,
-        });
-      }
-    };
-
-    if (map.current.loaded()) {
-      addMarkers();
-    } else {
-      map.current.on("load", addMarkers);
-    }
-  }, [assets, themeMode, isDarkMode]);
 
   // Add custom popup styles when component mounts or theme changes
   useEffect(() => {
@@ -157,6 +75,102 @@ const DashboardMap = () => {
       document.head.removeChild(styleElement);
     };
   }, [themeMode]);
+
+  // Initialize map when component mounts
+  useEffect(() => {
+    if (map.current) return; // already initialized
+
+    // Get map style based on theme mode
+    const mapStyle = getMapStyle(themeMode);
+
+    // Create map instance
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: mapStyle,
+      center: [-74.0721, 4.7110], // Coordenadas de Colombia (Bogotá)
+      zoom: 5,
+    });
+
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    // Clean up on unmount
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, [themeMode]);
+
+  // Update map style when theme changes
+  useEffect(() => {
+    if (!map.current) return;
+    
+    const mapStyle = getMapStyle(themeMode);
+    map.current.setStyle(mapStyle);
+  }, [themeMode]);
+
+  // Update markers when assets change
+  useEffect(() => {
+    if (!map.current || !assets || assets.length === 0) return;
+    
+    console.log('DashboardMap - Actualizando marcadores con assets:', assets);
+
+    const addMarkers = () => {
+      // Clear existing markers
+      const markers = document.getElementsByClassName('mapboxgl-marker');
+      while (markers[0]) {
+        markers[0].parentNode.removeChild(markers[0]);
+      }
+
+      // Add markers for each asset
+      assets.forEach((asset) => {
+        // Create custom marker element
+        const el = document.createElement('div');
+        el.className = `asset-marker asset-marker-${asset.type}`;
+        el.style.width = '24px';
+        el.style.height = '24px';
+        el.style.backgroundSize = '70%';
+        el.style.backgroundRepeat = 'no-repeat';
+        el.style.backgroundPosition = 'center';
+        el.style.backgroundImage = `url("${getAssetIcon(asset.type)}")`;
+        el.style.backgroundColor = getIconBackground(asset.type, isDarkMode);
+        el.style.borderRadius = '50%';
+        el.style.border = '2px solid white';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+        // Create marker
+        new mapboxgl.Marker({ element: el })
+          .setLngLat([asset.longitude, asset.latitude])
+          .setPopup(
+            new mapboxgl.Popup().setHTML(`
+              <h4>${asset.name}</h4>
+              <p>Type: ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)}</p>
+              <p>Comments: ${asset.comments || "N/A"}</p>
+            `)
+          )
+          .addTo(map.current);
+      });
+
+      // Fit map to show all markers
+      if (assets.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        assets.forEach(asset => {
+          bounds.extend([asset.longitude, asset.latitude]);
+        });
+        map.current.fitBounds(bounds, { padding: 40 });
+      }
+    };
+
+    // If map is already loaded, add markers immediately
+    if (map.current.loaded()) {
+      addMarkers();
+    } else {
+      // Otherwise wait for map to load
+      map.current.on('load', addMarkers);
+    }
+  }, [assets, themeMode, isDarkMode, assetsLoaded]);
 
   return <MapContainer ref={mapContainer} />;
 };
