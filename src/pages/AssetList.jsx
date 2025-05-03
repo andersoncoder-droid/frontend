@@ -28,13 +28,19 @@ import { es } from 'date-fns/locale';
 import AddAssetForm from '../components/AddAssetForm';
 
 const AssetList = () => {
-  const { assets, loading, error, deleteAsset, canEditAssets, refreshAssets } = useContext(AssetsContext);
+  const { assets, loading, error, deleteAsset, canEditAsset, refreshAssets } = useContext(AssetsContext);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [openAddDialog, setOpenAddDialog] = React.useState(false);
   const [openEditDialog, setOpenEditDialog] = React.useState(false);
   const [selectedAsset, setSelectedAsset] = React.useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false);
+
+  // Filtrar activos basado en el rol del usuario
+  const filteredAssets = assets.filter(asset => {
+    if (user.role === 'admin') return true;
+    return asset.createdBy === user.username;
+  });
 
   // Actualizar los activos cuando se monta el componente
   useEffect(() => {
@@ -112,22 +118,40 @@ const AssetList = () => {
 
   return (
     <MainLayout>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <Typography variant="h4" gutterBottom>
-            Lista de Activos
-          </Typography>
+      <Box sx={{ 
+        mb: 4, 
+        display: 'flex', 
+        flexDirection: 'column',
+        gap: 2
+      }}>
+        <Typography variant="h4">
+          Lista de Activos
+        </Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          backgroundColor: '#f5f5f5',
+          padding: 2,
+          borderRadius: 1
+        }}>
           <Typography variant="body1" color="textSecondary">
             Gestiona todos los activos registrados
           </Typography>
-        </div>
-        <Button 
-          variant="contained" 
-          startIcon={<Add />}
-          onClick={handleAddAsset}
-        >
-          Añadir Activo
-        </Button>
+          <Button 
+            variant="contained" 
+            startIcon={<Add />}
+            onClick={handleAddAsset}
+            sx={{
+              backgroundColor: '#1976d2',
+              '&:hover': {
+                backgroundColor: '#1565c0'
+              }
+            }}
+          >
+            Añadir Activo
+          </Button>
+        </Box>
       </Box>
       
       <TableContainer component={Paper}>
@@ -141,18 +165,20 @@ const AssetList = () => {
               <TableCell>Fecha Creación</TableCell>
               <TableCell>Creado Por</TableCell>
               <TableCell>Comentarios</TableCell>
-              {canEditAssets() && <TableCell>Acciones</TableCell>}
+              {canEditAsset && <TableCell>Acciones</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
-            {assets.length === 0 ? (
+            {filteredAssets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canEditAssets() ? 8 : 7} align="center">
-                  No hay activos registrados
+                <TableCell colSpan={canEditAsset ? 8 : 7} align="center">
+                  {user.role === 'operator' ? 
+                    'No has creado ningún activo aún' : 
+                    'No hay activos registrados'}
                 </TableCell>
               </TableRow>
             ) : (
-              assets.map((asset) => (
+              filteredAssets.map((asset) => (
                 <TableRow key={asset.id}>
                   <TableCell>{asset.id}</TableCell>
                   <TableCell>{asset.name}</TableCell>
@@ -172,7 +198,7 @@ const AssetList = () => {
                   <TableCell>{formatDate(asset.createdAt)}</TableCell>
                   <TableCell>{asset.createdBy || 'Desconocido'}</TableCell>
                   <TableCell>{asset.comments || 'Sin comentarios'}</TableCell>
-                  {canEditAssets() && (
+                  {canEditAsset && (user.role === 'admin' || asset.createdBy === user.username) && (
                     <TableCell>
                       <IconButton size="small" onClick={() => handleEditAsset(asset)}>
                         <Edit fontSize="small" />
@@ -197,6 +223,20 @@ const AssetList = () => {
         <DialogTitle>Añadir Nuevo Activo</DialogTitle>
         <DialogContent>
           <AddAssetForm onAssetAdded={handleAssetAdded} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para editar activo */}
+      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar Activo</DialogTitle>
+        <DialogContent>
+          <AddAssetForm 
+            onAssetAdded={() => {
+              setOpenEditDialog(false);
+              refreshAssets();
+            }} 
+            initialData={selectedAsset}
+          />
         </DialogContent>
       </Dialog>
 

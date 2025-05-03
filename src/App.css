@@ -1,5 +1,74 @@
+/* Estilos globales modernos */
+:root {
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --box-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --box-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --box-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.14);
+  --transition-speed: 0.2s;
+  --icon-blue-light: #64b5f6;
+  --icon-blue-hover: #1976d2;
+  --icon-hover-bg: rgba(100, 181, 246, 0.15);
+  --icon-dashboard: #64b5f6;
+  --icon-dashboard-hover: #1976d2;
+  --icon-map: #81c784;
+  --icon-map-hover: #388e3c;
+  --icon-assets: #ffd54f;
+  --icon-assets-hover: #ffa000;
+  --icon-users: #ba68c8;
+  --icon-users-hover: #7b1fa2;
+}
+
+/* Iconos del menú lateral */
+.menu-icon {
+  color: var(--icon-blue-light) !important;
+  border-radius: 15%;
+  transition: 
+    color var(--transition-speed) ease,
+    background var(--transition-speed) ease,
+    transform var(--transition-speed) ease;
+  padding: 6px;
+  font-size: 2rem !important;
+  cursor: pointer;
+}
+
+.menu-icon:hover {
+  color: var(--icon-blue-hover) !important;
+  background: var(--icon-hover-bg);
+  transform: scale(1);
+}
+
+/* Estilos base */
 .App {
   text-align: center;
+}
+
+/* Estilos modernos para componentes Material-UI */
+.MuiPaper-root {
+  border-radius: var(--border-radius-md) !important;
+  transition: all var(--transition-speed) ease-in-out !important;
+}
+
+.MuiCard-root {
+  border-radius: var(--border-radius-md) !important;
+  box-shadow: var(--box-shadow-sm) !important;
+  transition: all var(--transition-speed) ease-in-out !important;
+}
+
+.MuiCard-root:hover {
+  box-shadow: var(--box-shadow-md) !important;
+  transform: translateY(-2px);
+}
+
+.MuiButton-root {
+  border-radius: var(--border-radius-sm) !important;
+  transition: all var(--transition-speed) ease-in-out !important;
+}
+
+.MuiDialog-paper {
+  border-radius: var(--border-radius-lg) !important;
+  box-shadow: var(--box-shadow-lg) !important;
 }
 
 /* Custom marker styling */
@@ -9,7 +78,12 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--box-shadow-sm);
+  transition: transform var(--transition-speed) ease-in-out;
+}
+
+.marker:hover {
+  transform: scale(1.1);
 }
 
 /* Custom scrollbar */
@@ -19,11 +93,13 @@
 
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
+  border-radius: var(--border-radius-sm);
 }
 
 ::-webkit-scrollbar-thumb {
   background: #888;
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
+  transition: background var(--transition-speed) ease-in-out;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -33,8 +109,8 @@
 /* Map popup styling */
 .mapboxgl-popup-content {
   padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius-md) !important;
+  box-shadow: var(--box-shadow-md) !important;
 }
 
 .mapboxgl-popup-content h3 {
@@ -44,12 +120,20 @@
 
 /* Animation for notifications */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .notification-item {
   animation: fadeIn 0.3s ease-in-out;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow-sm);
 }
 
 .App-logo {
@@ -85,4 +169,62 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+
+/* Iconos individuales */
+.menu-icon-dashboard {
+  color: var(--icon-dashboard) !important;
+  transition: color var(--transition-speed), background var(--transition-speed), transform var(--transition-speed);
+  border-radius: 50%;
+  padding: 6px;
+  font-size: 2rem !important;
+  cursor: pointer;
+}
+.menu-icon-dashboard:hover {
+  color: var(--icon-dashboard-hover) !important;
+  background: rgba(100, 181, 246, 0.15);
+  transform: scale(1.12);
+}
+
+.menu-icon-map {
+  color: var(--icon-map) !important;
+  transition: color var(--transition-speed), background var(--transition-speed), transform var(--transition-speed);
+  border-radius: 50%;
+  padding: 6px;
+  font-size: 2rem !important;
+  cursor: pointer;
+}
+.menu-icon-map:hover {
+  color: var(--icon-map-hover) !important;
+  background: rgba(129, 199, 132, 0.15);
+  transform: scale(1.12);
+}
+
+.menu-icon-assets {
+  color: var(--icon-assets) !important;
+  transition: color var(--transition-speed), background var(--transition-speed), transform var(--transition-speed);
+  border-radius: 50%;
+  padding: 6px;
+  font-size: 2rem !important;
+  cursor: pointer;
+}
+.menu-icon-assets:hover {
+  color: var(--icon-assets-hover) !important;
+  background: rgba(255, 213, 79, 0.15);
+  transform: scale(1.12);
+}
+
+.menu-icon-users {
+  color: var(--icon-users) !important;
+  transition: color var(--transition-speed), background var(--transition-speed), transform var(--transition-speed);
+  border-radius: 50%;
+  padding: 6px;
+  font-size: 2rem !important;
+  cursor: pointer;
+}
+.menu-icon-users:hover {
+  color: var(--icon-users-hover) !important;
+  background: rgba(186, 104, 200, 0.15);
+  transform: scale(1.12);
 }

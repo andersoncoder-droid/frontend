@@ -1,11 +1,9 @@
-import React, { useRef, useEffect, useContext, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import styled from 'styled-components';
-import { AssetsContext } from '../context/AssetsContext';
-import { ThemeContext } from '../context/ThemeContext';
-import { getAssetIcon, getAssetColor, getIconBackground } from "../utils/assetIcons";
-import { getMapStyle } from './MapComponent';
+import React, { useRef, useEffect, useContext, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import styled from "styled-components";
+import { AssetsContext } from "../context/AssetsContext";
+import { getAssetIcon, getIconBackground } from "../utils/assetIcons";
 
 const MapContainer = styled.div`
   width: 100%;
@@ -14,163 +12,112 @@ const MapContainer = styled.div`
   overflow: hidden;
 `;
 
-// Add custom CSS for popups to ensure they're visible in both themes
-const getCustomPopupStyle = (themeMode) => {
-  const isDarkMode = themeMode === 'dark';
-  
-  return `
-    .mapboxgl-popup-content {
-      background-color: ${isDarkMode ? '#333333' : '#ffffff'};
-      color: ${isDarkMode ? '#ffffff' : '#333333'};
-      padding: 12px;
-      border-radius: 6px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    }
-    .mapboxgl-popup-content h4 {
-      margin-top: 0;
-      color: ${isDarkMode ? '#64b5f6' : '#1a73e8'};
-      font-weight: 500;
-    }
-    .mapboxgl-popup-content p {
-      margin: 5px 0;
-      color: ${isDarkMode ? '#e0e0e0' : '#333333'};
-    }
-    .mapboxgl-popup-close-button {
-      color: ${isDarkMode ? '#ffffff' : '#333333'};
-    }
-    .mapboxgl-popup-tip {
-      border-top-color: ${isDarkMode ? '#333333' : '#ffffff'};
-      border-bottom-color: ${isDarkMode ? '#333333' : '#ffffff'};
-    }
-  `;
-};
-
 const DashboardMap = () => {
+  mapboxgl.accessToken =
+    "pk.eyJ1IjoiYW5kZXJzb25sb3NhZGEiLCJhIjoiY203eTNlNXdoMDVvMTJqb2thanV1YTU3NSJ9.mR2ivDi1z73GMHc-sIZpHQ";
   const mapContainer = useRef(null);
   const map = useRef(null);
   const { assets, refreshAssets } = useContext(AssetsContext);
-  const { themeMode } = useContext(ThemeContext);
-  const isDarkMode = themeMode === "dark";
   const [assetsLoaded, setAssetsLoaded] = useState(false);
-  
-  // Añadir este efecto para refrescar los activos cuando se monta el componente
-  useEffect(() => {
-    console.log('DashboardMap - Refrescando activos');
-    refreshAssets();
-    setAssetsLoaded(true);
-  }, [refreshAssets]);
+  const initialLoadRef = useRef(false);
 
-  // Add custom popup styles when component mounts or theme changes
+  // Efecto para cargar los activos solo una vez al montar el componente
   useEffect(() => {
-    // Get custom popup style based on theme mode
-    const customPopupStyle = getCustomPopupStyle(themeMode);
-    
-    // Add custom styles to head
-    const styleElement = document.createElement('style');
-    styleElement.textContent = customPopupStyle;
-    document.head.appendChild(styleElement);
-
-    // Clean up on unmount or theme change
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, [themeMode]);
+    if (!initialLoadRef.current) {
+      console.log("DashboardMap - Refrescando activos");
+      refreshAssets();
+      setAssetsLoaded(true);
+      initialLoadRef.current = true;
+    }
+  }, []); // Dependencia vacía para que solo se ejecute al montar
 
   // Initialize map when component mounts
   useEffect(() => {
-    if (map.current) return; // already initialized
+    if (map.current) return;
 
-    // Get map style based on theme mode
-    const mapStyle = getMapStyle(themeMode);
-
-    // Create map instance
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: mapStyle,
-      center: [-74.0721, 4.7110], // Coordenadas de Colombia (Bogotá)
+      style: "mapbox://styles/mapbox/streets-v11",
+      center: [-74.0721, 4.711],
       zoom: 5,
     });
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-    // Clean up on unmount
     return () => {
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, [themeMode]);
-
-  // Update map style when theme changes
-  useEffect(() => {
-    if (!map.current) return;
-    
-    const mapStyle = getMapStyle(themeMode);
-    map.current.setStyle(mapStyle);
-  }, [themeMode]);
+  }, []);
 
   // Update markers when assets change
   useEffect(() => {
     if (!map.current || !assets || assets.length === 0) return;
-    
-    console.log('DashboardMap - Actualizando marcadores con assets:', assets);
+
+    console.log("DashboardMap - Actualizando marcadores con assets:", assets);
 
     const addMarkers = () => {
-      // Clear existing markers
-      const markers = document.getElementsByClassName('mapboxgl-marker');
+      const markers = document.getElementsByClassName("mapboxgl-marker");
       while (markers[0]) {
         markers[0].parentNode.removeChild(markers[0]);
       }
 
-      // Add markers for each asset
       assets.forEach((asset) => {
-        // Create custom marker element
-        const el = document.createElement('div');
+        const el = document.createElement("div");
         el.className = `asset-marker asset-marker-${asset.type}`;
-        el.style.width = '24px';
-        el.style.height = '24px';
-        el.style.backgroundSize = '70%';
-        el.style.backgroundRepeat = 'no-repeat';
-        el.style.backgroundPosition = 'center';
+        el.style.width = "24px";
+        el.style.height = "24px";
+        el.style.backgroundSize = "70%";
+        el.style.backgroundRepeat = "no-repeat";
+        el.style.backgroundPosition = "center";
         el.style.backgroundImage = `url("${getAssetIcon(asset.type)}")`;
-        el.style.backgroundColor = getIconBackground(asset.type, isDarkMode);
-        el.style.borderRadius = '50%';
-        el.style.border = '2px solid white';
-        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        el.style.backgroundColor = getIconBackground(asset.type);
+        el.style.borderRadius = "50%";
+        el.style.border = "2px solid white";
+        el.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)";
 
-        // Create marker
         new mapboxgl.Marker({ element: el })
           .setLngLat([asset.longitude, asset.latitude])
           .setPopup(
             new mapboxgl.Popup().setHTML(`
-              <h4>${asset.name}</h4>
-              <p>Type: ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)}</p>
-              <p>Comments: ${asset.comments || "N/A"}</p>
+              <h3>${asset.name}</h3>
+              <p>Tipo: ${
+                asset.type.charAt(0).toUpperCase() + asset.type.slice(1)
+              }</p>
+              <p>Comentarios: ${asset.comments || "N/A"}</p>
+              <p>Creado el: ${new Date(asset.createdAt).toLocaleDateString(
+                "es-ES",
+                {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
+              )}</p>
+              <p>Creado por: ${asset.createdBy || "Desconocido"}</p>
             `)
           )
-          .addTo(map.current);
+          .addTo(map.current); // Changed from mapInstance.current to map.current
       });
 
-      // Fit map to show all markers
       if (assets.length > 0) {
         const bounds = new mapboxgl.LngLatBounds();
-        assets.forEach(asset => {
+        assets.forEach((asset) => {
           bounds.extend([asset.longitude, asset.latitude]);
         });
         map.current.fitBounds(bounds, { padding: 40 });
       }
     };
 
-    // If map is already loaded, add markers immediately
     if (map.current.loaded()) {
       addMarkers();
     } else {
-      // Otherwise wait for map to load
-      map.current.on('load', addMarkers);
+      map.current.on("load", addMarkers);
     }
-  }, [assets, themeMode, isDarkMode, assetsLoaded]);
+  }, [assets, assetsLoaded]);
 
   return <MapContainer ref={mapContainer} />;
 };

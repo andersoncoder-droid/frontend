@@ -8,37 +8,28 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import PrivateRoute from "./components/PrivateRoute";
+import React, { useContext } from 'react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeContext } from './context/ThemeContext';
+import MainRouter from './MainRouter';
 
 function App() {
+  const { themeMode } = useContext(ThemeContext);
+
+  const theme = createTheme({
+    palette: {
+      mode: themeMode, // 'light' o 'dark'
+    },
+  });
+
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/dashboard"
-              element={
-                <PrivateRoute>
-                  <Dashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <PrivateRoute role="admin">
-                  <AdminPanel />
-                </PrivateRoute>
-              }
-            />
-          </Routes>
-        </Router>
-      </SocketProvider>
-    </AuthProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <MainRouter />
+    </ThemeProvider>
   );
 }
 
-// Main route setup with AuthProvider and SocketProvider.
-
 export default App;
+// Main route setup with AuthProvider and SocketProvider.

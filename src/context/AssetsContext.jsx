@@ -5,118 +5,104 @@
 import React, {
   createContext,
   useState,
-  useEffect,
-  useContext,
   useCallback,
+  useContext,
+  useRef,
+  useEffect,
 } from "react";
+import api from "../services/api"; // Cambiado de "../utils/api" a "../services/api"
 import { NotificationContext } from "./NotificationContext";
 import { AuthContext } from "./AuthContext";
-import api from "../services/api";
 
 export const AssetsContext = createContext();
 
-// Mover los datos de prueba fuera del componente para que no se recreen en cada renderizado
-const mockAssets = [
-  {
-    id: 1,
-    name: "Pozo Barrancabermeja",
-    type: "well",
-    latitude: 7.065,
-    longitude: -73.8547,
-    comments: "Pozo principal",
-    createdAt: "2023-05-15T10:30:00Z",
-    createdBy: "admin",
-  },
-  {
-    id: 2,
-    name: "Motor Medellín",
-    type: "motor",
-    latitude: 6.2476,
-    longitude: -75.5658,
-    comments: "Motor de alta potencia",
-    createdAt: "2023-06-20T14:45:00Z",
-    createdBy: "operator",
-  },
-  {
-    id: 3,
-    name: "Transformador Bogotá",
-    type: "transformer",
-    latitude: 4.711,
-    longitude: -74.0721,
-    comments: "Transformador principal",
-    createdAt: "2023-07-05T09:15:00Z",
-    createdBy: "admin",
-  },
-  {
-    id: 4,
-    name: "Pozo Cali",
-    type: "well",
-    latitude: 3.4516,
-    longitude: -76.532,
-    comments: "Pozo secundario",
-    createdAt: "2023-08-10T11:20:00Z",
-    createdBy: "operator",
-  },
-];
-
 export const AssetsProvider = ({ children }) => {
   const [assets, setAssets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const lastError = useRef(null);
   const { addNotification } = useContext(NotificationContext);
   const { user } = useContext(AuthContext);
+  const isInitialMount = useRef(true);
+  const storedAssets = useRef([]);  // Nuevo ref para mantener los assets
 
-  // Usar useCallback para evitar recrear la función en cada renderizado
   const fetchAssets = useCallback(async () => {
+    if (!user) {
+      setAssets([]);
+      setLoading(false);
+      setError("Usuario no autenticado");
+      return;
+    }
     try {
       setLoading(true);
-
-      // Comentar la petición a la API y usar datos de prueba
-      // const response = await api.get('/api/assets');
-      // setAssets(response.data);
-
-      // Usar datos de prueba en su lugar
-      setAssets(mockAssets);
       setError(null);
+      lastError.current = null;
+      
+      // Si ya tenemos assets almacenados, los usamos
+      if (storedAssets.current.length > 0) {
+        setAssets(storedAssets.current);
+      } else {
+        // Si no hay assets almacenados, cargamos los mock iniciales
+        const mockAssets = [
+          {
+            id: 1,
+            name: "Pozo Cusiana",
+            type: "well",
+            latitude: 5.4397,
+            longitude: -72.7075,
+            comments: "Pozo principal en el campo Cusiana",
+            createdAt: new Date().toISOString(),
+            createdBy: "admin"
+          },
+          {
+            id: 2,
+            name: "Motor Caño Limón",
+            type: "motor",
+            latitude: 6.9897,
+            longitude: -71.3047,
+            comments: "Motor principal del campo Caño Limón",
+            createdAt: new Date().toISOString(),
+            createdBy: "admin"
+          },
+          {
+            id: 3,
+            name: "Transformador La Cira",
+            type: "transformer",
+            latitude: 7.0375,
+            longitude: -73.8141,
+            comments: "Transformador principal del campo La Cira-Infantas",
+            createdAt: new Date().toISOString(),
+            createdBy: "admin"
+          }
+        ];
+        storedAssets.current = mockAssets;
+        setAssets(mockAssets);
+      }
+      
+      setLoading(false);
     } catch (err) {
-      console.error("Error fetching assets:", err);
-      setError("Failed to load assets");
-      // Solo mostrar la notificación si hay un error real
-      addNotification("Error al cargar los activos", "error");
-    } finally {
+      const errorMsg = "Error al cargar los activos";
+      setError(errorMsg);
+      if (lastError.current !== errorMsg) {
+        addNotification(errorMsg, "error");
+        lastError.current = errorMsg;
+      }
       setLoading(false);
     }
-  }, [addNotification]); // Eliminar mockAssets de las dependencias
+  }, [user, addNotification]);
 
-  // Cargar activos iniciales
-  useEffect(() => {
-    fetchAssets();
-  }, [fetchAssets]);
-
-  // Añadir un nuevo activo
   const addAsset = async (newAsset) => {
     try {
-      // Comentar la petición a la API
-      // const response = await api.post('/api/assets', newAsset);
-
-      // Crear un nuevo activo con ID generado y fecha de creación
-      const newId =
-        assets.length > 0 ? Math.max(...assets.map((a) => a.id)) + 1 : 1;
       const createdAsset = {
         ...newAsset,
-        id: newId,
+        id: storedAssets.current.length + 1,
         createdAt: new Date().toISOString(),
-        createdBy: user ? user.username : "unknown",
+        createdBy: user.username || 'admin'
       };
-
-      // Actualizar el estado local sin provocar una recarga completa
-      const updatedAssets = [...assets, createdAsset];
-      setAssets(updatedAssets);
-
-      console.log("Activo añadido:", createdAsset);
-      console.log("Lista actualizada de activos:", updatedAssets);
-
-      // Mostrar notificación
+      
+      storedAssets.current = [...storedAssets.current, createdAsset];
+      setAssets(storedAssets.current);
+      
       addNotification(
         `Activo "${createdAsset.name}" añadido correctamente`,
         "success"
@@ -129,26 +115,25 @@ export const AssetsProvider = ({ children }) => {
     }
   };
 
-  // Actualizar un activo existente
   const updateAsset = async (updatedAsset) => {
     try {
-      // Comentar la petición a la API
-      // const response = await api.put(`/api/assets/${updatedAsset.id}`, updatedAsset);
-
-      const updatedAssets = assets.map((asset) =>
-        asset.id === updatedAsset.id ? updatedAsset : asset
+      const existingAsset = storedAssets.current.find(a => a.id === updatedAsset.id);
+      const asset = {
+        ...updatedAsset,
+        createdAt: existingAsset.createdAt,
+        createdBy: existingAsset.createdBy
+      };
+      
+      storedAssets.current = storedAssets.current.map((a) => 
+        a.id === asset.id ? asset : a
       );
-
-      setAssets(updatedAssets);
-      console.log("Activo actualizado:", updatedAsset);
-      console.log("Lista actualizada de activos:", updatedAssets);
-
-      // Mostrar notificación
+      setAssets(storedAssets.current);
+      
       addNotification(
-        `Activo "${updatedAsset.name}" actualizado correctamente`,
+        `Activo "${asset.name}" actualizado correctamente`,
         "info"
       );
-      return updatedAsset;
+      return asset;
     } catch (err) {
       console.error("Error updating asset:", err);
       addNotification("Error al actualizar el activo", "error");
@@ -156,30 +141,13 @@ export const AssetsProvider = ({ children }) => {
     }
   };
 
-  // Eliminar un activo
   const deleteAsset = async (assetId) => {
     try {
-      // Encontrar el nombre del activo antes de eliminarlo
-      const assetToDelete = assets.find((asset) => asset.id === assetId);
-
-      // Comentar la petición a la API
-      // await api.delete(`/api/assets/${assetId}`);
-
-      const updatedAssets = assets.filter((asset) => asset.id !== assetId);
-      setAssets(updatedAssets);
-
-      console.log("Activo eliminado:", assetId);
-      console.log("Lista actualizada de activos:", updatedAssets);
-
-      // Mostrar notificación
-      if (assetToDelete) {
-        addNotification(
-          `Activo "${assetToDelete.name}" eliminado correctamente`,
-          "warning"
-        );
-      } else {
-        addNotification(`Activo eliminado correctamente`, "warning");
-      }
+      storedAssets.current = storedAssets.current.filter(
+        (asset) => asset.id !== assetId
+      );
+      setAssets(storedAssets.current);
+      addNotification(`Activo eliminado correctamente`, "warning");
     } catch (err) {
       console.error("Error deleting asset:", err);
       addNotification("Error al eliminar el activo", "error");
@@ -187,8 +155,25 @@ export const AssetsProvider = ({ children }) => {
     }
   };
 
-  // Verificar si el usuario puede editar/eliminar activos
-  const canEditAssets = () => {
+  const canEditAsset = (asset) => {
+    if (!user) return false;
+    if (user.role === "admin") return true;
+    if (user.role === "operator") {
+      return asset.createdBy === user.username;
+    }
+    return false;
+  };
+
+  const canDeleteAsset = (asset) => {
+    if (!user) return false;
+    if (user.role === "admin") return true;
+    if (user.role === "operator") {
+      return asset.createdBy === user.username;
+    }
+    return false;
+  };
+
+  const canCreateAssets = () => {
     return user && (user.role === "admin" || user.role === "operator");
   };
 
@@ -201,8 +186,10 @@ export const AssetsProvider = ({ children }) => {
         addAsset,
         updateAsset,
         deleteAsset,
-        canEditAssets,
-        refreshAssets: fetchAssets, // Exponer la función para actualizaciones manuales
+        canEditAsset,
+        canDeleteAsset,
+        canCreateAssets,
+        refreshAssets: fetchAssets,
       }}
     >
       {children}

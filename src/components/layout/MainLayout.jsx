@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext } from "react";
 import {
   Box,
   Drawer,
@@ -15,7 +15,7 @@ import {
   Menu,
   MenuItem,
   useTheme,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
@@ -27,13 +27,14 @@ import {
   Logout,
   Brightness4,
   Brightness7,
-} from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
-import { ThemeContext } from '../../context/ThemeContext';
-import { NotificationContext } from '../../context/NotificationContext';
-import Notification from '../Notification';
+  ListAlt as ListAltIcon,
+  List as ListIcon, // <-- Add this line
+} from "@mui/icons-material";
+import { styled } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../context/AuthContext";
+import { NotificationContext } from "../../context/NotificationContext";
+import Notification from "../Notification";
 
 const drawerWidth = 240;
 
@@ -41,7 +42,6 @@ const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const { user, logout } = useContext(AuthContext);
-  const { darkMode, toggleTheme } = useContext(ThemeContext);
   const { notifications } = useContext(NotificationContext);
   const navigate = useNavigate();
   const theme = useTheme();
@@ -60,19 +60,17 @@ const MainLayout = ({ children }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Map View', icon: <MapIcon />, path: '/map' },
+    { text: "DashBoard", icon: <DashboardIcon className="menu-icon-dashboard" />, path: "/dashboard" },
+    { text: "Mapa", icon: <MapIcon className="menu-icon-map" />, path: "/map" },
+    { text: "Activos", icon: <ListIcon className="menu-icon-assets" />, path: "/assets" },
   ];
-
-  // Add admin-only menu items
-  if (user && user.role === 'admin') {
+  if (user && user.role === "admin") {
     menuItems.push(
-      { text: 'User Management', icon: <PeopleIcon />, path: '/users' },
-      { text: 'Settings', icon: <SettingsIcon />, path: '/settings' }
+      { text: "Usuarios", icon: <PeopleIcon className="menu-icon-users" />, path: "/users" }
     );
   }
 
@@ -80,19 +78,34 @@ const MainLayout = ({ children }) => {
     <div>
       <Toolbar>
         <Typography variant="h6" noWrap>
-          Decimetrix
+          MapThing
         </Typography>
       </Toolbar>
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem 
-            button 
-            key={item.text} 
+          <ListItem
+            button
+            key={item.text}
             onClick={() => navigate(item.path)}
+            sx={{
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              py: 2,
+            }}
           >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
+            <ListItemIcon sx={{ minWidth: 0, justifyContent: "center" }}>
+              {item.icon}
+            </ListItemIcon>
+            <ListItemText
+              primary={item.text}
+              primaryTypographyProps={{
+                fontSize: "0.85rem",
+                textAlign: "center",
+                mt: 1,
+              }}
+            />
           </ListItem>
         ))}
       </List>
@@ -100,27 +113,30 @@ const MainLayout = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+    <Box sx={{ display: "flex" }}>
+      <AppBar
+        position="fixed"
+        sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          width: { xs: "100%", sm: `calc(100% - ${drawerWidth}px)` },
+        }}
+      >
         <Toolbar>
           <IconButton
             color="inherit"
             aria-label="open drawer"
             onClick={handleDrawerToggle}
             edge="start"
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 2, display: { sm: "none" } }}
           >
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Decimetrix Asset Management
+            Decimetrix
           </Typography>
-          
-          {/* Botón para cambiar tema */}
-          <IconButton color="inherit" onClick={toggleTheme}>
-            {darkMode ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
-          
+
+          {/* Eliminado el botón de cambio de tema */}
+
           <IconButton
             size="large"
             edge="end"
@@ -138,13 +154,13 @@ const MainLayout = ({ children }) => {
             id="menu-appbar"
             anchorEl={anchorEl}
             anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'right',
+              vertical: "bottom",
+              horizontal: "right",
             }}
             keepMounted
             transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
+              vertical: "top",
+              horizontal: "right",
             }}
             open={Boolean(anchorEl)}
             onClose={handleProfileMenuClose}
@@ -158,10 +174,18 @@ const MainLayout = ({ children }) => {
           </Menu>
         </Toolbar>
       </AppBar>
-      
+
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{
+          width: { sm: drawerWidth },
+          flexShrink: { sm: 0 },
+          "& .MuiDrawer-paper": {
+            width: drawerWidth,
+            boxSizing: "border-box",
+            display: { xs: "none", sm: "block" },
+          },
+        }}
       >
         <Drawer
           variant="temporary"
@@ -171,8 +195,11 @@ const MainLayout = ({ children }) => {
             keepMounted: true, // Better open performance on mobile
           }}
           sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            display: { xs: "block", sm: "none" },
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
+              width: drawerWidth,
+            },
           }}
         >
           {drawer}
@@ -180,22 +207,26 @@ const MainLayout = ({ children }) => {
         <Drawer
           variant="permanent"
           sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            display: { xs: "none", sm: "block" },
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
+              width: drawerWidth,
+            },
           }}
           open
         >
           {drawer}
         </Drawer>
       </Box>
-      
+
       <Box
         component="main"
-        sx={{ 
-          flexGrow: 1, 
-          p: 3, 
+        sx={{
+          flexGrow: 1,
+          p: { xs: 2, sm: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          marginTop: '64px'
+          marginTop: { xs: "56px", sm: "64px" },
+          minHeight: "100vh",
         }}
       >
         {children}

@@ -137,7 +137,7 @@ const MainLayout = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Decimetrix Asset Management
+            Decimetrix
           </Typography>
           <div>
             <IconButton

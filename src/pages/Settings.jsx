@@ -67,18 +67,7 @@ const Settings = () => {
                 sx={{ mb: 2, display: 'block' }}
               />
               
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.darkMode}
-                    onChange={handleChange}
-                    name="darkMode"
-                    color="primary"
-                  />
-                }
-                label="Dark Mode"
-                sx={{ mb: 2, display: 'block' }}
-              />
+              {/* Eliminado el switch de modo oscuro */}
               
               <TextField
                 label="Data Refresh Interval (seconds)"

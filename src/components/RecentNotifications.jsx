@@ -17,54 +17,42 @@ import {
   CheckCircle as CheckCircleIcon,
   Info as InfoIcon,
   Warning as WarningIcon,
+  Error as ErrorIcon,
 } from "@mui/icons-material";
 import { NotificationContext } from "../context/NotificationContext";
-// Importaciones específicas de date-fns
-import formatDate from "date-fns/format";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+const getIcon = (severity) => {
+  switch (severity) {
+    case "success":
+      return <CheckCircleIcon color="success" />;
+    case "warning":
+      return <WarningIcon color="warning" />;
+    case "error":
+      return <ErrorIcon color="error" />;
+    case "info":
+    default:
+      return <InfoIcon color="info" />;
+  }
+};
+
+const formatTime = (time) => {
+  return format(new Date(time), "dd/MM/yyyy HH:mm", { locale: es });
+};
+
 const RecentNotifications = () => {
-  // Usar desestructuración con valor por defecto para evitar undefined
-  const { notifications = [] } = useContext(NotificationContext) || {};
-
-  // Verificar si notifications existe y tiene elementos
-  const hasNotifications = notifications && notifications.length > 0;
-
-  // Función para obtener el icono según la severidad
-  const getIcon = (severity) => {
-    switch (severity) {
-      case "success":
-        return <CheckCircleIcon color="success" />;
-      case "warning":
-        return <WarningIcon color="warning" />;
-      case "error":
-        return <WarningIcon color="error" />;
-      case "info":
-      default:
-        return <InfoIcon color="info" />;
-    }
-  };
-
-  // Función para formatear la fecha
-  const formatTime = (date) => {
-    if (!date) return "";
-    try {
-      return formatDate(new Date(date), "h:mm a", { locale: es });
-    } catch (error) {
-      console.error("Error al formatear fecha:", error);
-      return "";
-    }
-  };
+  const { notifications } = useContext(NotificationContext);
 
   return (
-    <Paper sx={{ p: 2, height: "100%" }}>
-      <Typography variant="h6" gutterBottom>
-        Notificaciones Recientes
-      </Typography>
-
-      {hasNotifications ? (
+    <Box>
+      {notifications.length === 0 ? (
+        <Typography color="textSecondary">
+          No hay notificaciones recientes
+        </Typography>
+      ) : (
         <List>
-          {notifications.map((notification) => (
+          {notifications.map((notification, index) => (
             <React.Fragment key={notification.id}>
               <ListItem alignItems="flex-start">
                 <ListItemIcon>{getIcon(notification.severity)}</ListItemIcon>
@@ -77,14 +65,8 @@ const RecentNotifications = () => {
             </React.Fragment>
           ))}
         </List>
-      ) : (
-        <Box sx={{ py: 2, textAlign: "center" }}>
-          <Typography color="textSecondary">
-            No hay notificaciones recientes
-          </Typography>
-        </Box>
       )}
-    </Paper>
+    </Box>
   );
 };
 

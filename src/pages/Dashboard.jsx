@@ -1,5 +1,17 @@
-import React, { useEffect, useContext } from "react";
+import React, { useRef, useEffect, useContext, useState } from "react";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  IconButton,
   Box,
   Typography,
   Paper,
@@ -7,21 +19,21 @@ import {
   Card,
   CardContent,
   Avatar,
+  Button,
 } from "@mui/material";
-import {
-  LocationOn,
-} from "@mui/icons-material";
+import { LocationOn } from "@mui/icons-material";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { AuthContext } from "../context/AuthContext";
 import { AssetsContext } from "../context/AssetsContext";
-import { ThemeContext } from "../context/ThemeContext";
 import { SocketContext } from "../context/SocketContext";
 import { NotificationContext } from "../context/NotificationContext";
 import MainLayout from "../components/layout/MainLayout";
 import RecentNotifications from "../components/RecentNotifications";
 import { getAssetIcon, getAssetColor } from "../utils/assetIcons";
 import DashboardMap from "../components/DashboardMap";
+import { Add, Edit, Delete } from "@mui/icons-material";
+import AddAssetForm from "../components/AddAssetForm";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYW5kZXJzb25sb3NhZGEiLCJhIjoiY203eTNlNXdoMDVvMTJqb2thanV1YTU3NSJ9.mR2ivDi1z73GMHc-sIZpHQ";
@@ -29,43 +41,75 @@ mapboxgl.accessToken =
 const AssetTypeIcon = ({ type }) => {
   return (
     <Avatar sx={{ bgcolor: getAssetColor(type), width: 40, height: 40 }}>
-      <img 
-        src={getAssetIcon(type)} 
-        alt={`${type} icon`} 
-        style={{ 
-          width: '24px', 
-          height: '24px' 
-        }} 
+      <img
+        src={getAssetIcon(type)}
+        alt={`${type} icon`}
+        style={{
+          width: "24px",
+          height: "24px",
+        }}
       />
     </Avatar>
   );
 };
 
-function Dashboard() {
-  const { assets, loading, refreshAssets } = useContext(AssetsContext);
+const Dashboard = () => {
+  const {
+    assets,
+    loading,
+    refreshAssets,
+    deleteAsset,
+    canEditAsset,
+    canDeleteAsset,
+  } = useContext(AssetsContext);
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
   const { addNotification } = useContext(NotificationContext);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const initialLoadRef = useRef(false);
+
+  const handleAddAsset = () => {
+    setOpenAddDialog(true);
+  };
+
+  const handleEditAsset = (asset) => {
+    setSelectedAsset(asset);
+    setOpenAddDialog(true);
+  };
+
+  const handleDeleteAsset = (asset) => {
+    setSelectedAsset(asset);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenAddDialog(false);
+    setSelectedAsset(null);
+  };
+
+  const handleAssetAdded = () => {
+    setOpenAddDialog(false);
+    refreshAssets();
+  };
+
+  const confirmDeleteAsset = async () => {
+    if (selectedAsset) {
+      await deleteAsset(selectedAsset.id);
+      setOpenDeleteDialog(false);
+      setSelectedAsset(null);
+    }
+  };
 
   // Efecto para actualizar los activos al montar el componente
   useEffect(() => {
-    console.log('Dashboard - Refrescando activos al iniciar');
-    refreshAssets();
-    
-    // También refrescar cuando el componente se vuelve a montar
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Dashboard visible - Refrescando activos');
-        refreshAssets();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshAssets]);
+    if (!initialLoadRef.current) {
+      console.log("Dashboard - Refrescando activos al iniciar");
+      refreshAssets();
+      initialLoadRef.current = true;
+    }
+  }, [refreshAssets]); // Añadir refreshAssets como dependencia
 
   // Refresco automático cada 30 segundos
   useEffect(() => {
@@ -73,7 +117,7 @@ function Dashboard() {
       console.log("Refrescando activos automáticamente");
       refreshAssets();
     }, 30000); // 30 segundos
-    
+
     return () => clearInterval(interval);
   }, [refreshAssets]);
 
@@ -193,9 +237,15 @@ function Dashboard() {
       </Grid>
 
       {/* Mapa y Notificaciones */}
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 6 }}>
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 2 }}>
+          <Paper 
+            sx={{ 
+              p: 2,
+              height: '100%',
+              boxShadow: 2
+            }}
+          >
             <Typography variant="h6" gutterBottom>
               Mapa de Activos
             </Typography>
@@ -203,11 +253,185 @@ function Dashboard() {
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <RecentNotifications />
+          <Paper 
+            sx={{ 
+              p: 2,
+              height: '100%',
+              boxShadow: 2,
+              backgroundColor: '#f8f9fa'
+            }}
+          >
+            <Typography variant="h6" gutterBottom>
+              Notificaciones Recientes
+            </Typography>
+            <Box sx={{ mt: 2 }}>
+              <RecentNotifications />
+            </Box>
+          </Paper>
         </Grid>
       </Grid>
+
+      {/* Tabla de Activos */}
+      <Paper 
+        sx={{ 
+          p: 3,
+          mt: 4,
+          boxShadow: 3,
+          borderRadius: 2
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
+          <Typography variant="h6">Gestión de Activos</Typography>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleAddAsset}
+            sx={{
+              minWidth: "auto",
+              px: 2,
+            }}
+          >
+            Añadir Activo
+          </Button>
+        </Box>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Nombre</TableCell>
+                <TableCell>Tipo</TableCell>
+                <TableCell>Ubicación</TableCell>
+                <TableCell>Comentarios</TableCell>
+                <TableCell align="right" sx={{ width: "120px" }}>
+                  Acciones
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {assets.map((asset) => (
+                <TableRow key={asset.id}>
+                  <TableCell>{asset.name}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={
+                        asset.type === "well"
+                          ? "Pozo"
+                          : asset.type === "motor"
+                          ? "Motor"
+                          : "Transformador"
+                      }
+                      color={
+                        asset.type === "well"
+                          ? "primary"
+                          : asset.type === "motor"
+                          ? "secondary"
+                          : "warning"
+                      }
+                      size="small"
+                      sx={{ minWidth: "80px" }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {parseFloat(asset.latitude).toFixed(4)},{" "}
+                    {parseFloat(asset.longitude).toFixed(4)}
+                  </TableCell>
+                  <TableCell>{asset.comments || "Sin comentarios"}</TableCell>
+                  <TableCell align="right">
+                    {(canEditAsset(asset) || canDeleteAsset(asset)) && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        {canEditAsset(asset) && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditAsset(asset)}
+                            sx={{
+                              p: "4px",
+                              "&:hover": { backgroundColor: "action.hover" },
+                            }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        )}
+                        {canDeleteAsset(asset) && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteAsset(asset)}
+                            sx={{
+                              p: "4px",
+                              "&:hover": {
+                                backgroundColor: "error.light",
+                                color: "error.main",
+                              },
+                            }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        )}
+                      </Box>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* Diálogo para añadir/editar activo */}
+      <Dialog
+        open={openAddDialog}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            borderRadius: 2
+          }
+        }}
+      >
+        <DialogTitle>
+          {selectedAsset ? "Editar Activo" : "Añadir Nuevo Activo"}
+        </DialogTitle>
+        <DialogContent>
+          <AddAssetForm
+            onAssetAdded={handleAssetAdded}
+            initialData={selectedAsset}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de confirmación de eliminación */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <Typography>¿Está seguro que desea eliminar este activo?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>
+          <Button onClick={confirmDeleteAsset} color="error">
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </MainLayout>
   );
-}
+};
 
 export default Dashboard;
