@@ -43,34 +43,13 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token, loadUser]);
 
-  // loadUser: Decodes JWT and sets user state.
-  // login: Mock login for development, sets a fake JWT.
-  // register: Stub for user registration (not implemented).
-  // logout: Clears token and user state.
-
   // Login user
   const login = async (email, password) => {
     try {
-      // Para desarrollo/pruebas, permitir login con credenciales hardcodeadas
-      if (email === "admin@decimetrix.com" && password === "Admin123") {
-        // Create a mock token with admin role
-        const mockToken =
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6ImFkbWluIn0sImlhdCI6MTYxNjc2MjcwMCwiZXhwIjoxNjE2ODQ5MTAwfQ.mock-signature";
-        setToken(mockToken);
-        return true;
-      } else if (
-        email === "operator@decimetrix.com" &&
-        password === "operator123"
-      ) {
-        // Create a mock token with operator role
-        const mockToken =
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoyLCJ1c2VybmFtZSI6Im9wZXJhdG9yIiwicm9sZSI6Im9wZXJhdG9yIn0sImlhdCI6MTYxNjc2MjcwMCwiZXhwIjoxNjE2ODQ5MTAwfQ.mock-signature";
-        setToken(mockToken);
-        return true;
-      }
-
-      // Si no coinciden las credenciales hardcodeadas, devolver false
-      return false;
+      // Realiza una llamada al backend para autenticar al usuario
+      const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+      setToken(res.data.token);
+      return true;
     } catch (err) {
       console.error("Login error:", err.response?.data?.msg || err.message);
       return false;
